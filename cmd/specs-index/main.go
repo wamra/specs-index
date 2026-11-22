@@ -51,6 +51,7 @@ func init() {
 		"coverage": {cmdCoverage, "coverage                    requirements, designs and scenarios with gaps; dangling, duplicate and conflicting IDs"},
 		"status":   {cmdStatus, "status                      index counts and the configured embedder"},
 		"doctor":   {cmdDoctor, "doctor                      check the index and the embedder; exit 1 on a failure"},
+		"mcp":      {cmdMCP, "mcp                         serve the tools over stdio for Claude Code (project: CLAUDE_PROJECT_DIR, else the working directory)"},
 		"config":   {cmdConfig, "config [init]               show the effective configuration, or write an example file"},
 		"version":  {cmdVersion, "version"},
 	}
