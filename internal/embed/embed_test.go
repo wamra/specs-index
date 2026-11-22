@@ -579,3 +579,10 @@ func TestInferStoresSuggestionsOnly(t *testing.T) {
 		t.Fatalf("%d inferred rows after the second run, want %d", got, n)
 	}
 }
+
+func TestRefusalNamesWhereTheFlagExists(t *testing.T) {
+	_, err := New(config.Config{Provider: config.Providers{Embed: "openai"}, Model: "m", BaseURL: "https://embeddings.example.test"}, false)
+	if err == nil || !strings.Contains(err.Error(), "--allow-cloud to index or doctor") {
+		t.Fatalf("refusal = %v; want it to say --allow-cloud applies to index or doctor", err)
+	}
+}

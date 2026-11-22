@@ -30,10 +30,12 @@ type EmbedderInfo struct {
 	Dims        int    `json:"index_dims"`
 }
 
-// StatusResult is the result of status.
+// StatusResult is the result of status. Sources is the number of registered
+// sources and SourcePaths lists them.
 type StatusResult struct {
 	DB              string         `json:"db"`
 	Sources         int            `json:"sources"`
+	SourcePaths     []SourceInfo   `json:"source_paths"`
 	Documents       int            `json:"documents"`
 	FailedDocs      int            `json:"failed_documents"`
 	DocumentsByType map[string]int `json:"documents_by_type"`
@@ -100,9 +102,11 @@ func Status(ctx context.Context, st *store.Store, root string, cfg config.Config
 		return r, err
 	}
 	var failed, embedded sql.NullInt64
-	if err := db.QueryRowContext(ctx, `SELECT count(*) FROM sources`).Scan(&r.Sources); err != nil {
+	srcs, err := Sources(st)
+	if err != nil {
 		return r, err
 	}
+	r.SourcePaths, r.Sources = srcs.Sources, len(srcs.Sources)
 	if err := db.QueryRowContext(ctx, `SELECT SUM(status = 'failed') FROM documents`).Scan(&failed); err != nil {
 		return r, err
 	}

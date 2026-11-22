@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/wamra/specs-index/internal/model"
 	"github.com/wamra/specs-index/internal/store"
 )
 
@@ -42,13 +43,18 @@ type TraceOpts struct {
 // or a diamond: it is listed again but not expanded, which keeps output and
 // queries linear in nodes and edges. Missing marks an edge end that no
 // entity defines (Type, Title and Path are then empty). Path and Line locate
-// the entity itself.
+// the entity itself; LinkPath and LinkLine locate the line where the edge
+// that reached the node is written (empty on the root and for an inferred
+// edge, which no document holds). When several edges join the same pair, the
+// first explicit one (lowest id) is shown.
 type Node struct {
 	Key      string
 	Type     string
 	Title    string
 	Path     string
 	Line     int
+	LinkPath string
+	LinkLine int
 	Via      string
 	Explicit bool
 	Repeat   bool
@@ -86,12 +92,11 @@ func Trace(ctx context.Context, st *store.Store, key string, o TraceOpts) (*Node
 	if w.maxDeep <= 0 {
 		w.maxDeep = DefaultDepth
 	}
-	valid := map[string]bool{"parent_of": true, "implements": true, "verified_by": true, "depends_on": true, "conflicts_with": true, "references": true}
 	var kinds []string
 	seenKind := map[string]bool{}
 	for _, k := range w.kinds {
-		if !valid[k] {
-			return nil, fmt.Errorf("unknown edge kind %q (valid: parent_of, implements, verified_by, depends_on, conflicts_with, references)", k)
+		if !model.IsEdgeKind(k) {
+			return nil, fmt.Errorf("unknown edge kind %q (valid: %s)", k, strings.Join(model.EdgeKinds, ", "))
 		}
 		if !seenKind[k] {
 			seenKind[k] = true
@@ -159,6 +164,8 @@ type step struct {
 	kind     string
 	forward  bool
 	explicit bool
+	linkPath string
+	linkLine int
 }
 
 // steps lists the neighbours of key in one direction. implements is stored
@@ -172,11 +179,17 @@ func (w *walker) steps(ctx context.Context, key string, down bool) ([]step, erro
 		if !forward {
 			col, oth = "dst_key", "src_key"
 		}
-		q := `SELECT ` + oth + `, MAX(explicit) FROM edges WHERE ` + col + ` = ? AND kind = ?`
+		// One row per neighbour; the link shown is the first explicit edge
+		// (or the first edge when only inferred ones exist).
+		q := `SELECT ` + oth + ` AS o, MAX(explicit) AS ex,
+			COALESCE(MIN(CASE WHEN explicit = 1 THEN id END), MIN(id)) AS eid
+			FROM edges WHERE ` + col + ` = ? AND kind = ?`
 		if !w.inferr {
 			q += ` AND explicit = 1`
 		}
-		q += ` GROUP BY ` + oth + ` ORDER BY ` + oth
+		q += ` GROUP BY ` + oth
+		q = `SELECT g.o, g.ex, COALESCE(d.path, ''), COALESCE(x.line, 0)
+			FROM (` + q + `) g JOIN edges x ON x.id = g.eid LEFT JOIN documents d ON d.id = x.doc_id ORDER BY g.o`
 		rows, err := w.db.QueryContext(ctx, q, key, kind)
 		if err != nil {
 			return nil, err
@@ -184,7 +197,7 @@ func (w *walker) steps(ctx context.Context, key string, down bool) ([]step, erro
 		for rows.Next() {
 			s := step{kind: kind, forward: forward}
 			var ex int
-			if err := rows.Scan(&s.other, &ex); err != nil {
+			if err := rows.Scan(&s.other, &ex, &s.linkPath, &s.linkLine); err != nil {
 				rows.Close()
 				return nil, err
 			}
@@ -224,7 +237,7 @@ func (w *walker) children(ctx context.Context, key string, down bool) ([]*Node, 
 			if err != nil {
 				return nil, err
 			}
-			n := &Node{Key: s.other, Explicit: s.explicit, Via: s.kind + " forward"}
+			n := &Node{Key: s.other, Explicit: s.explicit, Via: s.kind + " forward", LinkPath: s.linkPath, LinkLine: s.linkLine}
 			if !s.forward {
 				n.Via = s.kind + " reversed"
 			}

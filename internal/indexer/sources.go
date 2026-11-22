@@ -23,20 +23,31 @@ type Source struct {
 	Kind string // "file" or "dir"
 }
 
-// AddSource registers path (absolute, or relative to root) as a source. It
-// refuses a path that resolves outside root, including through a symlink.
-func AddSource(st *store.Store, root, p string) error {
-	rel, err := workspace.Rel(root, p)
-	if err != nil {
-		return err
+// CheckSource returns the root-relative path and kind ("file" or "dir") that
+// AddSource would register for p, or the error it would refuse p with: a path
+// that does not exist or resolves outside root, including through a symlink.
+// It touches nothing.
+func CheckSource(root, p string) (rel, kind string, err error) {
+	if rel, err = workspace.Rel(root, p); err != nil {
+		return "", "", err
 	}
 	fi, err := os.Stat(filepath.Join(root, filepath.FromSlash(rel)))
 	if err != nil {
-		return err
+		return "", "", err
 	}
-	kind := "file"
+	kind = "file"
 	if fi.IsDir() {
 		kind = "dir"
+	}
+	return rel, kind, nil
+}
+
+// AddSource registers path (absolute, or relative to root) as a source. It
+// refuses what CheckSource refuses.
+func AddSource(st *store.Store, root, p string) error {
+	rel, kind, err := CheckSource(root, p)
+	if err != nil {
+		return err
 	}
 	_, err = st.DB().Exec(`INSERT OR IGNORE INTO sources(path, kind) VALUES (?, ?)`, rel, kind)
 	return err

@@ -21,6 +21,8 @@ func TestParseQuery(t *testing.T) {
 		{"type:requirement -has:fds", Query{Filters: []Filter{{Field: "type", Value: "requirement"}}, HasNot: []string{"fds"}}},
 		{"BRD-004", Query{IDs: []string{"BRD-004"}}},
 		{"BRD-004 upload FDS-002", Query{Text: "upload", IDs: []string{"BRD-004", "FDS-002"}}},
+		{"brd-004", Query{Text: `"brd-004"`, IDs: []string{"BRD-004"}}},
+		{"utf-8 encoding", Query{Text: `"utf-8" encoding`, IDs: []string{"UTF-8"}}},
 		{`path:"docs/my dir" status:approved`, Query{Filters: []Filter{{Field: "path", Value: "docs/my dir"}, {Field: "status", Value: "approved"}}}},
 		{"oauth status:approved type:requirement -has:scenario", Query{Text: "oauth", Filters: []Filter{{Field: "status", Value: "approved"}, {Field: "type", Value: "requirement"}}, HasNot: []string{"scenario"}}},
 		{"single sign-on", Query{Text: `single "sign-on"`}},

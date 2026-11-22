@@ -19,6 +19,19 @@ type Entity struct {
 	Steps                                    []Step
 }
 
+// EdgeKinds are the explicit link kinds, in the order they are documented.
+var EdgeKinds = []string{"parent_of", "implements", "verified_by", "depends_on", "conflicts_with", "references"}
+
+// IsEdgeKind reports whether k is one of EdgeKinds.
+func IsEdgeKind(k string) bool {
+	for _, e := range EdgeKinds {
+		if e == k {
+			return true
+		}
+	}
+	return false
+}
+
 // Edge is a directed link between two entity keys.
 // Origin is one of: field, table, tag, mention, inferred.
 type Edge struct {

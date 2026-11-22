@@ -30,7 +30,7 @@ specs-index <command> [flags]     (every command except version takes --root DIR
 | `show KEY` | One entity with its source lines and its direct incoming and outgoing links. An unknown key is an error. |
 | `trace KEY [--direction down\|up\|both] [--depth 5] [--kinds a,b] [--include-inferred]` | Follow links from an entity. |
 | `coverage [--no-candidates]` | Gaps and ID problems (below). |
-| `status` | Index counts, last index time, the configured embedder and the environment variables. |
+| `status` | The registered sources, index counts, last index time, the configured embedder and the environment variables. |
 | `doctor [--allow-cloud]` | Check the index (integrity, FTS5, vector table) and the embedder; exits 1 on a failure. Never contacts a cloud embedder unless `--allow-cloud`. |
 | `config [init]` | Show the effective configuration, or write an example config file (never overwrites an existing one). |
 | `version` | Print the version (`-ldflags "-X main.version=..."` sets it at build time). |
@@ -49,7 +49,7 @@ The first lines report how many files were scanned, parsed, unchanged, removed o
 
 ### trace
 
-Direction `down` (default) follows links away from the key (requirement to designs and scenarios), `up` follows them back, `both` does both. `--depth` is how many links to follow. `--kinds` is a comma-separated list; the default is `parent_of,implements,verified_by`, and exactly the listed kinds are followed. `--include-inferred` also follows inferred links. Output is an indented tree; each line shows how it was reached (`[via implements reversed]`), `[repeat]` for an entity already shown, and `file:line`.
+Direction `down` (default) follows links away from the key (requirement to designs and scenarios), `up` follows them back, `both` does both. `--depth` is how many links to follow. `--kinds` is a comma-separated list; the default is `parent_of,implements,verified_by`, and exactly the listed kinds are followed. `--depth` must be at least 1. `--include-inferred` also follows inferred links. Output is an indented tree; each line shows how it was reached (`[via implements reversed]`), `[repeat]` for an entity already shown, and `file:line`: for the root its definition, for every other line the place where the link that reached it is written (the `Parent:` line, the table row, the `@BRD-003` tag line, ...), or the definition when it was reached over an inferred link, which no document holds. In JSON each node has `path` and `line` (the definition) and `link_path` and `link_line` (where the link is written; empty on the root and for inferred links).
 
 ### coverage
 
@@ -67,7 +67,7 @@ Implemented in `internal/search/query.go`.
 | --- | --- |
 | words | full-text terms, all required; `prefix*` matches a prefix; `AND`, `OR`, `NOT` are operators |
 | `"a phrase"` | phrase match |
-| `BRD-004` | a bare ID (`[A-Z][A-Z0-9]*-<digits>`): exact key lookup, exact hits come first |
+| `BRD-004` | a bare ID (`[A-Z][A-Z0-9]*-<digits>`): exact key lookup, exact hits come first. The same word in another letter case (`brd-004`) is also looked up upper-cased, and stays a full-text word |
 | `type:` | entity type: `requirement`, `design`, `acceptance`, `feature`, `scenario` |
 | `status:`, `priority:` | the value of the `Status` / `Priority` field (case-insensitive equality) |
 | `tag:` | a Gherkin tag without the `@`, for example `tag:smoke` |
@@ -75,7 +75,7 @@ Implemented in `internal/search/query.go`.
 | `-type:x`, `-status:x`, ... | negated filter |
 | `has:scenario`, `has:fds` | the entity has an explicit `verified_by` link to a scenario / an explicit `implements` link from a design |
 | `-has:scenario`, `-has:fds` | the entity has none |
-| `-word`, `-"phrase"` | exclude hits containing it |
+| `-word`, `-"phrase"` | exclude hits containing it (exact-ID hits too) |
 
 A query of filters only lists the matching entities (ordered by key). `has:` accepts only `scenario` and `fds`; any other value is an error. An unbalanced quote is an error.
 
@@ -86,7 +86,7 @@ Modes (`--mode`, default `auto`):
 - `fts`: full text only.
 - `vector`, `hybrid`: need an embedder; without one they fail (`vector search needs an embedder, but no embedder is configured`).
 
-Each hit shows key, type, title, file and lines, status, and `(stale: ...)` when the file changed since it was indexed (run `index`). `--k` sets the number of hits (default 10). In JSON, hits carry `key`, `type`, `title`, `path`, `start_line`, `end_line`, `status`, `snippet`, `score`, `stale`, `source` (`exact`, `fts`, `vector` or `filter`), and the result has `query`, `mode` and `notes`.
+Each hit shows key, type, title, file and lines, status, and `(stale: ...)` when the file changed since it was indexed (run `index`). `--k` sets the number of hits (default 10, at least 1). In JSON, hits carry `key`, `type`, `title`, `path`, `start_line`, `end_line`, `status`, `snippet`, `score`, `stale`, `source` (`exact`, `fts`, `vector` or `filter`), and the result has `query`, `mode` and `notes`.
 
 ## Index location and project root
 

@@ -805,3 +805,87 @@ func TestCoverageNoCandidatesAndProseIDs(t *testing.T) {
 		t.Errorf("json candidates_note = %q", r.CandidatesNote)
 	}
 }
+
+func TestStatusListsSources(t *testing.T) {
+	root := indexed(t)
+	out := mustOK(t, "status", "--root", root)
+	contains(t, out, "  docs  dir", "  features  dir")
+	var r api.StatusResult
+	json.Unmarshal([]byte(mustOK(t, "status", "--root", root, "--json")), &r)
+	if r.Sources != 2 || len(r.SourcePaths) != 2 || r.SourcePaths[0].Path != "docs" {
+		t.Errorf("status --json sources: %d %+v", r.Sources, r.SourcePaths)
+	}
+}
+
+func TestKAndDepthBelowOneAreUsageErrors(t *testing.T) {
+	root := indexed(t)
+	for _, args := range [][]string{{"search", "--k", "0", "upload"}, {"search", "--k", "-3", "upload"}, {"trace", "--depth", "0", "BRD-001"}, {"trace", "--depth", "-1", "BRD-001"}} {
+		if code, _, errw := cli(t, append(args, "--root", root)...); code != 2 {
+			t.Errorf("%v: exit %d %s", args, code, errw)
+		}
+	}
+}
+
+func TestExcludeAppliesToExactHits(t *testing.T) {
+	root := indexed(t)
+	out := mustOK(t, "search", "--root", root, "--", `BRD-004 -"resumed"`)
+	if strings.Contains(out, "BRD-004") {
+		t.Errorf("excluded phrase still returns BRD-004:\n%s", out)
+	}
+	contains(t, mustOK(t, "search", "--root", root, "--", `BRD-004 -"nosuchphrase"`), "BRD-004")
+}
+
+func TestLowerCaseIDFindsEntity(t *testing.T) {
+	root := indexed(t)
+	contains(t, mustOK(t, "search", "--root", root, "brd-004"), "BRD-004  requirement")
+}
+
+func TestTracePrintsLinkLine(t *testing.T) {
+	root := indexed(t)
+	// BRD-003 is reached from BRD-002 through the Parent: line of BRD-003
+	out := mustOK(t, "trace", "--root", root, "BRD-002", "--depth", "1", "--kinds", "parent_of")
+	var line string
+	for _, l := range strings.Split(out, "\n") {
+		if strings.Contains(l, "BRD-003") {
+			line = l
+		}
+	}
+	if !strings.Contains(line, "docs/brd.md:20") {
+		t.Errorf("BRD-003 line does not show the Parent: line docs/brd.md:20: %q\n%s", line, out)
+	}
+	var n api.TraceNode
+	json.Unmarshal([]byte(mustOK(t, "trace", "--root", root, "BRD-002", "--depth", "1", "--kinds", "parent_of", "--json")), &n)
+	for _, c := range n.Children {
+		if c.Key == "BRD-003" && (c.LinkPath != "docs/brd.md" || c.LinkLine != 20 || c.Line != 18) {
+			t.Errorf("BRD-003 node: %+v", c)
+		}
+	}
+}
+
+func TestRefusedAddCreatesNothing(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git not installed")
+	}
+	setHome(t)
+	root, _ := filepath.EvalSymlinks(t.TempDir())
+	if err := exec.Command("git", "-C", root, "init", "-q").Run(); err != nil {
+		t.Skip("git init failed")
+	}
+	os.MkdirAll(filepath.Join(root, "docs"), 0o755)
+	code, _, errw := cli(t, "add", "--root", root, filepath.Join(root, "docs"), t.TempDir())
+	if code != 1 || !strings.Contains(errw, "outside") {
+		t.Fatalf("exit %d %s", code, errw)
+	}
+	if _, err := os.Stat(filepath.Join(root, ".Wammy")); !os.IsNotExist(err) {
+		t.Errorf(".Wammy created by a refused add (%v)", err)
+	}
+	if b, _ := os.ReadFile(filepath.Join(root, ".git", "info", "exclude")); strings.Contains(string(b), ".Wammy") {
+		t.Errorf("exclude written by a refused add")
+	}
+	if code, _, errw := cli(t, "add", "--root", root, filepath.Join(root, "missing")); code != 1 {
+		t.Errorf("missing path: exit %d %s", code, errw)
+	}
+	if _, err := os.Stat(filepath.Join(root, ".Wammy")); !os.IsNotExist(err) {
+		t.Errorf(".Wammy created by an add of a missing path")
+	}
+}

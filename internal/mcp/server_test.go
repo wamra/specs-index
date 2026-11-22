@@ -429,7 +429,7 @@ func TestAddSourceOutsideRootRefused(t *testing.T) {
 	}
 	link := filepath.Join(root, "escape")
 	linked := os.Symlink(outside, link) == nil
-	args := []string{outside, filepath.Dir(root), "../.."}
+	args := []string{outside, filepath.Dir(root), "../..", "missing-dir"}
 	if linked {
 		args = append(args, "escape")
 	}
@@ -441,6 +441,12 @@ func TestAddSourceOutsideRootRefused(t *testing.T) {
 	msgs := serve(t, root, lines...)
 	for i, a := range args {
 		r := result(t, byID(t, msgs, string(rune('0'+i+1))))
+		if a == "missing-dir" {
+			if !r.IsError {
+				t.Errorf("add_source %q: want a refusal, got %+v", a, r)
+			}
+			continue
+		}
 		if !r.IsError || !strings.Contains(r.Content[0].Text, "outside") {
 			t.Errorf("add_source %q: want an 'outside' refusal, got %+v", a, r)
 		}
@@ -673,7 +679,8 @@ func TestAnnotationsFollowTheNegotiatedRevision(t *testing.T) {
 		`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25"}}`,
 		`{"jsonrpc":"2.0","id":2,"method":"tools/list"}`)
 	h := hints(m, "2")
-	if h["search"]["readOnlyHint"] != true || h["search"]["openWorldHint"] != false {
+	// search sends the query text to the configured embedder
+	if h["search"]["readOnlyHint"] != true || h["search"]["openWorldHint"] != true {
 		t.Errorf("search annotations: %v", h["search"])
 	}
 	for _, n := range []string{"add_source", "remove_source", "index"} {
@@ -729,5 +736,14 @@ func TestCoverageNoCandidatesArgument(t *testing.T) {
 	r := result(t, byID(t, serve(t, root, call(1, "coverage", `{"no_candidates":true}`)), "1"))
 	if r.IsError || !strings.Contains(r.Content[0].Text, `"candidates_note": "candidate conflicts not computed`) {
 		t.Errorf("coverage no_candidates: %v %s", r.IsError, r.Content[0].Text)
+	}
+}
+
+func TestStatusListsSourcePaths(t *testing.T) {
+	root := newRoot(t)
+	indexed(t, root)
+	text := result(t, byID(t, serve(t, root, call(1, "status", "")), "1")).Content[0].Text
+	if !strings.Contains(text, `"source_paths": [`) || !strings.Contains(text, `"path": "features"`) {
+		t.Errorf("status does not list the sources:\n%s", text)
 	}
 }

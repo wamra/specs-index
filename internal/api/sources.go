@@ -45,6 +45,18 @@ func absFrom(base, p string) string {
 	return filepath.Join(base, p)
 }
 
+// CheckSources returns the error Add would refuse the first bad path with
+// (resolved against base), without opening or creating anything, so a caller
+// can refuse before the index file exists.
+func CheckSources(root, base string, paths []string) error {
+	for _, p := range paths {
+		if _, _, err := indexer.CheckSource(root, absFrom(base, p)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // Add registers paths as sources. Relative paths are resolved against base
 // (normally the working directory). It stops at the first refused path.
 func Add(st *store.Store, root, base string, paths []string) (SourcesResult, error) {

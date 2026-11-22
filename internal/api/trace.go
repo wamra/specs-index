@@ -3,13 +3,12 @@ package api
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/wamra/specs-index/internal/graph"
+	"github.com/wamra/specs-index/internal/model"
 	"github.com/wamra/specs-index/internal/store"
 )
-
-// edgeKinds are the edge kinds trace accepts (the six spec edges).
-var edgeKinds = map[string]bool{"parent_of": true, "implements": true, "verified_by": true, "depends_on": true, "conflicts_with": true, "references": true}
 
 // TraceOptions are the flags of trace.
 type TraceOptions struct {
@@ -20,14 +19,18 @@ type TraceOptions struct {
 }
 
 // TraceNode is one entity in the trace tree. Via is empty on the root,
-// otherwise "<kind> forward" or "<kind> reversed". Repeat nodes are not
-// expanded; Missing nodes are edge ends no entity defines.
+// otherwise "<kind> forward" or "<kind> reversed". Path and Line locate the
+// entity's definition; LinkPath and LinkLine the line where the link that
+// reached it is written (empty on the root and for inferred links). Repeat
+// nodes are not expanded; Missing nodes are edge ends no entity defines.
 type TraceNode struct {
 	Key      string      `json:"key"`
 	Type     string      `json:"type"`
 	Title    string      `json:"title"`
 	Path     string      `json:"path"`
 	Line     int         `json:"line"`
+	LinkPath string      `json:"link_path"`
+	LinkLine int         `json:"link_line"`
 	Via      string      `json:"via"`
 	Explicit bool        `json:"explicit"`
 	Repeat   bool        `json:"repeat"`
@@ -52,7 +55,7 @@ func Trace(ctx context.Context, st *store.Store, key string, o TraceOptions) (Tr
 
 func convertNode(n *graph.Node) TraceNode {
 	t := TraceNode{
-		Key: n.Key, Type: n.Type, Title: n.Title, Path: n.Path, Line: n.Line, Via: n.Via,
+		Key: n.Key, Type: n.Type, Title: n.Title, Path: n.Path, Line: n.Line, LinkPath: n.LinkPath, LinkLine: n.LinkLine, Via: n.Via,
 		Explicit: n.Explicit, Repeat: n.Repeat, Missing: n.Missing, Children: make([]TraceNode, 0, len(n.Children)),
 	}
 	for _, c := range n.Children {
@@ -70,8 +73,8 @@ func ValidateTraceOptions(o TraceOptions) error {
 		return fmt.Errorf("%w: invalid direction %q (want down, up or both)", ErrInvalidArgument, o.Direction)
 	}
 	for _, k := range o.Kinds {
-		if !edgeKinds[k] {
-			return fmt.Errorf("%w: unknown edge kind %q (valid: parent_of, implements, verified_by, depends_on, conflicts_with, references)", ErrInvalidArgument, k)
+		if !model.IsEdgeKind(k) {
+			return fmt.Errorf("%w: unknown edge kind %q (valid: %s)", ErrInvalidArgument, k, strings.Join(model.EdgeKinds, ", "))
 		}
 	}
 	return nil

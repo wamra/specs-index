@@ -12,6 +12,7 @@ import (
 
 	"github.com/wamra/specs-index/internal/api"
 	"github.com/wamra/specs-index/internal/config"
+	"github.com/wamra/specs-index/internal/model"
 	"github.com/wamra/specs-index/internal/store"
 	"github.com/wamra/specs-index/internal/workspace"
 )
@@ -90,7 +91,8 @@ var tools = []tool{
 		name: "search",
 		description: "Find requirements, designs and scenarios by text, meaning, entity key or filters. Use this first to locate an entity (for example \"login lockout\", \"BRD-001\", or \"type:requirement status:draft -has:scenario\"); " +
 			"use show to read a hit and trace to follow its links. Hits marked stale were indexed before their file changed: run index.",
-		readOnly: true,
+		readOnly:  true,
+		openWorld: true, // the query text goes to the configured embedder
 		props: map[string]any{
 			"query": str("Search text, an entity key such as BRD-001, or text with filters type:, status:, priority:, tag:, path:, has:scenario, has:fds (each can be negated with a leading minus). Required."),
 			"mode": map[string]any{"type": "string", "enum": []string{"auto", "exact", "fts", "vector", "hybrid"},
@@ -118,7 +120,7 @@ var tools = []tool{
 			"key":       str("Entity key to start from, for example BRD-001."),
 			"direction": map[string]any{"type": "string", "enum": []string{"down", "up", "both"}, "description": "down (default) follows links away from the key, up follows them back toward its parents, both does both."},
 			"depth":     map[string]any{"type": "integer", "minimum": 1, "maximum": maxDepth, "description": "How many links to follow (default 5)."},
-			"kinds": map[string]any{"type": "array", "items": map[string]any{"type": "string", "enum": []string{"parent_of", "implements", "verified_by", "depends_on", "conflicts_with", "references"}},
+			"kinds": map[string]any{"type": "array", "items": map[string]any{"type": "string", "enum": model.EdgeKinds},
 				"description": "Edge kinds to follow; exactly this set is followed. Default parent_of, implements and verified_by."},
 			"include_inferred": map[string]any{"type": "boolean", "description": "Also follow inferred links suggested by similarity (explicit=false). They never count as coverage. Default false."},
 		},
@@ -332,7 +334,7 @@ func toolAddSource(ctx context.Context, s *server, raw json.RawMessage) (any, er
 		return nil, err
 	}
 	// Refuse before anything is created on disk; api.Add checks again.
-	if _, err := workspace.Rel(s.root, p); err != nil {
+	if err := api.CheckSources(s.root, s.root, []string{p}); err != nil {
 		return nil, err
 	}
 	return s.withWrite(func(st *store.Store) (any, error) {

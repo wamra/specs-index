@@ -76,6 +76,10 @@ func cmdAdd(args []string, out, errw io.Writer) int {
 	if err != nil {
 		return fail(errw, err)
 	}
+	// Refuse before the index file or the git exclude line is created.
+	if err := api.CheckSources(root, cwd, pos); err != nil {
+		return fail(errw, err)
+	}
 	st, err := api.OpenForWrite(root)
 	if err != nil {
 		return fail(errw, err)

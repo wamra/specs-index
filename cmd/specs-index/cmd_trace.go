@@ -30,6 +30,9 @@ func cmdTrace(args []string, out, errw io.Writer) int {
 			o.Kinds = append(o.Kinds, k)
 		}
 	}
+	if o.Depth < 1 {
+		return usageErr(errw, "trace: --depth must be at least 1")
+	}
 	if err := api.ValidateTraceOptions(o); err != nil {
 		return usageErr(errw, "trace: %v", err)
 	}
@@ -65,7 +68,10 @@ func printTrace(out io.Writer, n api.TraceNode, depth int) {
 	if n.Repeat {
 		fmt.Fprint(out, "  [repeat]")
 	}
-	if n.Path != "" {
+	switch {
+	case n.LinkPath != "": // where the link that reached this node is written
+		fmt.Fprintf(out, "  %s:%d", n.LinkPath, n.LinkLine)
+	case n.Path != "": // the root, or a node reached over an inferred link
 		fmt.Fprintf(out, "  %s:%d", n.Path, n.Line)
 	}
 	fmt.Fprintln(out)

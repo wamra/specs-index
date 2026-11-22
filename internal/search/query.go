@@ -109,7 +109,8 @@ func quote(s string) string { return `"` + strings.ReplaceAll(s, `"`, `""`) + `"
 // ParseQuery parses the search grammar: free text, "phrases", AND/OR/NOT,
 // -"phrase" exclusions, type:/status:/priority:/tag:/path: filters (each
 // negated with a leading minus), has:scenario / has:fds (and -has:...), and
-// bare IDs such as BRD-004.
+// bare IDs such as BRD-004. A word that is an ID in another letter case
+// (brd-004) is looked up upper-cased and also kept as full text.
 func ParseQuery(s string) (Query, error) {
 	var q Query
 	toks, err := tokenize(s)
@@ -150,6 +151,11 @@ func ParseQuery(s string) (Query, error) {
 		case t.text == "AND" || t.text == "OR" || t.text == "NOT" || plainWord.MatchString(t.text):
 			text = append(text, t.text)
 		default:
+			if up := strings.ToUpper(t.text); idRe.MatchString(up) {
+				// brd-004: also look the key up exactly; the word stays in
+				// the full-text part as before
+				q.IDs = append(q.IDs, up)
+			}
 			text = append(text, quote(t.text))
 		}
 	}

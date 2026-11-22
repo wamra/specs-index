@@ -255,10 +255,11 @@ func (s *searcher) collect(rows *sql.Rows, withSnippet bool, source string) ([]f
 // order, subject to the filters.
 func (s *searcher) exact() ([]found, error) {
 	var out []found
+	where, args := s.excludeSQL()
 	for _, id := range s.q.IDs {
 		rows, err := s.db.QueryContext(s.ctx, baseSelect+`, substr(COALESCE(e.body,''),1,200), 0
-			FROM entities e JOIN documents d ON d.id = e.doc_id WHERE e.key = ?`+s.where,
-			append([]any{id}, s.args...)...)
+			FROM entities e JOIN documents d ON d.id = e.doc_id WHERE e.key = ?`+where,
+			append([]any{id}, args...)...)
 		if err != nil {
 			return nil, err
 		}
@@ -324,16 +325,23 @@ func badFTS(q Query, expr string, err error) error {
 	return fmt.Errorf("invalid search query (%s): %v", name, err)
 }
 
-// filterOnly lists entities matching the filters when the query has no text.
-func (s *searcher) filterOnly(limit int) ([]found, error) {
-	if len(s.q.Filters) == 0 && len(s.q.Has) == 0 && len(s.q.HasNot) == 0 && len(s.q.Exclude) == 0 {
-		return nil, nil
-	}
+// excludeSQL returns the filter conditions plus one condition per -word or
+// -"phrase": the entity's chunk text does not contain it (case-insensitive).
+func (s *searcher) excludeSQL() (string, []any) {
 	where, args := s.where, append([]any(nil), s.args...)
 	for _, e := range s.q.Exclude {
 		where += ` AND NOT EXISTS (SELECT 1 FROM chunks c WHERE c.entity_id = e.id AND lower(c.text) LIKE ? ESCAPE '\')`
 		args = append(args, "%"+likeEscape(e)+"%")
 	}
+	return where, args
+}
+
+// filterOnly lists entities matching the filters when the query has no text.
+func (s *searcher) filterOnly(limit int) ([]found, error) {
+	if len(s.q.Filters) == 0 && len(s.q.Has) == 0 && len(s.q.HasNot) == 0 && len(s.q.Exclude) == 0 {
+		return nil, nil
+	}
+	where, args := s.excludeSQL()
 	rows, err := s.db.QueryContext(s.ctx, baseSelect+`, substr(COALESCE(e.body,''),1,200), 0
 		FROM entities e JOIN documents d ON d.id = e.doc_id WHERE 1=1`+where+` ORDER BY e.key LIMIT ?`,
 		append(args, limit)...)

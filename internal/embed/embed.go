@@ -132,7 +132,7 @@ func New(cfg config.Config, allowCloud bool) (Embedder, error) {
 				where = "(unparseable URL)"
 			}
 		}
-		return nil, fmt.Errorf("%w: provider %q at %s would send document text off this machine; set \"allow_cloud\": true in the config or pass --allow-cloud",
+		return nil, fmt.Errorf("%w: provider %q at %s would send document text off this machine; set \"allow_cloud\": true in the config (or SPECS_INDEX_ALLOW_CLOUD=true), or pass --allow-cloud to index or doctor",
 			ErrCloudNotAllowed, res.Provider, where)
 	}
 	pe, err := provider.NewEmbedder(ec)

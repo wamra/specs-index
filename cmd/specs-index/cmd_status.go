@@ -39,6 +39,9 @@ func cmdStatus(args []string, out, errw io.Writer) int {
 	}
 	fmt.Fprintf(out, "index:      %s\n", r.DB)
 	fmt.Fprintf(out, "sources:    %d\n", r.Sources)
+	for _, src := range r.SourcePaths {
+		fmt.Fprintf(out, "  %s  %s\n", src.Path, src.Kind)
+	}
 	fmt.Fprintf(out, "documents:  %d (%d failed)  %s\n", r.Documents, r.FailedDocs, byType(r.DocumentsByType))
 	fmt.Fprintf(out, "entities:   %d  %s\n", r.Entities, byType(r.EntitiesByType))
 	fmt.Fprintf(out, "edges:      %d explicit, %d inferred\n", r.EdgesExplicit, r.EdgesInferred)
