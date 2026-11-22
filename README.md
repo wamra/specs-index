@@ -27,7 +27,7 @@ What was **not** verified:
 - That Claude Code on Windows finds `sh` to start the MCP server (`.mcp.json` uses `command: sh`). The `mcp-windows` CI job exists to prove it; it has never run.
 - CI as a whole (`.github/workflows/ci.yml`): never run, there is no remote.
 - A model session that calls the MCP tools or the slash commands (the isolated Claude Code profile used for testing was not logged in), including `${CLAUDE_PLUGIN_ROOT}` substitution inside the command files.
-- Vector, hybrid and `--infer` against a real embedding provider.
+- Embedding providers beyond one local model: the benchmark (configuration B in [BENCHMARKS.md](BENCHMARKS.md)) indexed and ran hybrid search with a local Ollama serving `embeddinggemma`; `--mode vector`, `--infer`, Bedrock, OpenAI-compatible endpoints and other models were not run against a real provider.
 - `scripts/install.sh` beyond the `--binary` form; installing from a marketplace.
 - Signing and notarisation of the binaries: not done.
 

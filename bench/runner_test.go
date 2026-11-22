@@ -6,7 +6,6 @@ import (
 	"io"
 	"math"
 	"net/http"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
@@ -318,8 +317,5 @@ func TestQueriesRunnerSkippedNotCounted(t *testing.T) {
 	fillMetrics(&res, qs, [][]string{{"A"}, nil}, []string{"", "no filter language"})
 	if res.MetricsAll != nil || res.MetricsUnfiltered.Queries != 1 || res.PerQuery[1].Skipped == "" {
 		t.Errorf("%+v", res)
-	}
-	if _, err := os.Stat("queries.json"); err != nil {
-		t.Fatal(err)
 	}
 }

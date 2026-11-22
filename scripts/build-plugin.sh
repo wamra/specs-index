@@ -5,6 +5,16 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OUT="${1:?usage: build-plugin.sh OUT [VERSION]}"
 VERSION="${2:-$(git -C "$ROOT" describe --tags --always --dirty 2>/dev/null || echo dev)}"
+# OUT is deleted first: refuse anything that is not a dedicated output directory.
+OUT_ABS="$(mkdir -p "$OUT" && cd "$OUT" && pwd -P)"
+ROOT_ABS="$(cd "$ROOT" && pwd -P)"
+HOME_ABS="$(cd "${HOME:-/}" 2>/dev/null && pwd -P || echo /)"
+case "$OUT_ABS" in
+  / | "$HOME_ABS" | "$ROOT_ABS") echo "build-plugin.sh: refusing to delete $OUT_ABS" >&2; exit 2 ;;
+esac
+case "$ROOT_ABS/" in
+  "$OUT_ABS"/*) echo "build-plugin.sh: refusing to delete $OUT_ABS, which contains the repository" >&2; exit 2 ;;
+esac
 rm -rf "$OUT"; mkdir -p "$OUT/.claude-plugin" "$OUT/bin" "$OUT/commands" "$OUT/skills/specs-search"
 for t in darwin/amd64 darwin/arm64 linux/amd64 linux/arm64 windows/amd64 windows/arm64; do
   os="${t%/*}"; arch="${t#*/}"; ext=""; [ "$os" = windows ] && ext=".exe"

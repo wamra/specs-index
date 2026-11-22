@@ -58,7 +58,7 @@ func init() {
 }
 
 func usage(w io.Writer) {
-	fmt.Fprintln(w, "usage: specs-index <command> [flags]   (every command except version takes --root DIR and --json)")
+	fmt.Fprintln(w, "usage: specs-index <command> [flags]   (every command except version and mcp takes --root DIR and --json)")
 	names := make([]string, 0, len(commands))
 	for n := range commands {
 		names = append(names, n)

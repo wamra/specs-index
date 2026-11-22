@@ -11,7 +11,9 @@ permissions:
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  # Only superseded pull-request runs are cancelled: a run on main may be
+  # publishing the plugin branch.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   # macOS is left out on purpose: it is the development platform and its
@@ -97,6 +99,8 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false # the push below passes the token itself
       - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod

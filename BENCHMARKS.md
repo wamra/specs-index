@@ -13,7 +13,7 @@ Measured by `go run ./bench` (and `bench/orama/run.mjs` for config C); every fig
 
 - **B and C differ in three things at once**: the engine (SQLite + FTS5 + vec1 vs Orama), the embedding model (EmbeddingGemma vs Qwen3-Embedding 0.6B) and exact-ID handling. specs-index has a built-in exact-ID lookup; the Orama harness has none. So Acc@1 and the exact_id row are **not** a like-for-like comparison of models, and a B-versus-C difference cannot be attributed to the model or to the engine.
 - **14 of the 44 headline queries are the entity key verbatim** (for example `BRD-006`), which any ID lookup solves. The second table below drops them and the filtered queries: it covers the 30 keyword and semantic queries only.
-- **The semantic labels were written by hand by the tool's author**, not by independent annotators, and the expected keys were not tuned against any run.
+- **The semantic labels were written by hand by the tool's author**, not by independent annotators.
 - **What cannot be concluded:** the corpus is 88 synthetic chunks, so a Recall@5 of 1.000 is a ceiling that cannot separate good retrievers from better ones; nothing here says how any configuration behaves on a real corpus, and nothing says which model is better in general.
 
 ## Results: 44 unfiltered queries (the set every configuration can answer)

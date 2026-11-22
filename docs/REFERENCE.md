@@ -17,7 +17,7 @@ Everything here was checked against the binary built from this repository (`spec
 ## Commands
 
 ```
-specs-index <command> [flags]     (every command except version takes --root DIR and --json)
+specs-index <command> [flags]     (every command except version and mcp takes --root DIR and --json)
 ```
 
 | Command | What it does |
@@ -36,7 +36,7 @@ specs-index <command> [flags]     (every command except version takes --root DIR
 | `version` | Print the version (`-ldflags "-X main.version=..."` sets it at build time). |
 | `mcp` | Serve the tools over stdio; takes no arguments. See [MCP server](#mcp-server). |
 
-Common flags: `--root DIR` (project root), `--json` (print the result as JSON).
+Common flags (every command except `version` and `mcp`): `--root DIR` (project root), `--json` (print the result as JSON).
 
 ### index
 
@@ -88,7 +88,7 @@ Modes (`--mode`, default `auto`):
 - `fts`: full text only.
 - `vector`, `hybrid`: need an embedder; without one they fail (`vector search needs an embedder, but no embedder is configured`).
 
-Each hit shows key, type, title, file and lines, status, and `(stale: ...)` when the file changed since it was indexed (run `index`). `--k` sets the number of hits (default 10, at least 1). In JSON, hits carry `key`, `type`, `title`, `path`, `start_line`, `end_line`, `status`, `snippet`, `score`, `stale`, `source` (`exact`, `fts`, `vector` or `filter`), and the result has `query`, `mode` and `notes`.
+Each hit shows key, type, title, file and lines, status, and `(stale: ...)` when the file changed since it was indexed (run `index`). `--k` sets the number of hits (default 10, at least 1). In JSON, hits carry `key`, `type`, `title`, `path`, `start_line`, `end_line`, `status`, `snippet`, `score`, `stale`, `source` (`exact`, `fts`, `vector` or `filter`), and the result has `query`, `mode`, `notes`, and `notice` when `auto` fell back to exact + full text (the same one-line message the text output prints to stderr; the key is absent otherwise).
 
 ## Index location and project root
 
@@ -177,7 +177,7 @@ Commands run in Claude Code's working directory, so the project root is found as
 | Script | Purpose |
 | --- | --- |
 | `scripts/plugin-launcher.sh` | Becomes `bin/specs-index` in the plugin: runs the bundled binary for this OS and CPU, else `specs-index` from `PATH`, else exits 127. |
-| `scripts/build-plugin.sh OUT [VERSION]` | Cross-builds the six binaries (darwin, linux, windows on amd64 and arm64, `CGO_ENABLED=0`) and stages the plugin tree into OUT. |
+| `scripts/build-plugin.sh OUT [VERSION]` | Cross-builds the six binaries (darwin, linux, windows on amd64 and arm64, `CGO_ENABLED=0`) and stages the plugin tree into OUT, which it deletes first; it refuses an OUT that is `/`, `$HOME`, the repository or an ancestor of it (exit 2). |
 | `scripts/check-plugin.sh OUT [VERSION_TEXT]` | Checks a staged tree: six binaries over 5 MB, launcher, executable bits, six command files, the skill, `plugin.json` without `version`, `.mcp.json` pointing at the launcher, tree under 120 MB, launcher exits 127 with no binary, `version` runs. Prints `check-plugin: ok (...)`. |
 | `scripts/build-release.sh [VERSION]` | Release archives and `checksums.txt` into `dist/`. |
 | `scripts/install.sh [--binary FILE] [--bin-dir DIR]` | Install the binary (macOS, Linux) and write a starter config if none exists. |
