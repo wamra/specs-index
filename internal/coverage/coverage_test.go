@@ -11,6 +11,7 @@ import (
 	"github.com/wamra/specs-index/internal/corpus"
 	"github.com/wamra/specs-index/internal/indexer"
 	"github.com/wamra/specs-index/internal/store"
+	"github.com/wamra/specs-index/internal/vector"
 )
 
 func copyDir(t *testing.T, src, dst string) {
@@ -216,5 +217,62 @@ func TestInferredEdgesDoNotCover(t *testing.T) {
 	same(t, "unlinked", itemKeys(after.UnlinkedScenarios), itemKeys(before.UnlinkedScenarios))
 	if len(after.Dangling) != len(before.Dangling) || len(after.Conflicts) != len(before.Conflicts) {
 		t.Errorf("dangling/conflicts changed: %+v %+v", after.Dangling, after.Conflicts)
+	}
+}
+
+func chunkID(t *testing.T, st *store.Store, key string) int64 {
+	t.Helper()
+	var id int64
+	if err := st.DB().QueryRow(`SELECT c.id FROM chunks c JOIN entities e ON e.id = c.entity_id WHERE e.key = ?`, key).Scan(&id); err != nil {
+		t.Fatalf("%s: %v", key, err)
+	}
+	return id
+}
+
+func TestCandidatesAreNearDuplicatesWithDifferentStatus(t *testing.T) {
+	ctx := context.Background()
+	st := indexedCorpus(t)
+	r, err := Run(ctx, st)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.Candidates == nil || len(r.Candidates) != 0 {
+		t.Fatalf("Candidates without vectors = %v, want empty and non-nil", r.Candidates)
+	}
+
+	for key, status := range map[string]string{"BRD-001": "approved", "BRD-004": "draft", "BRD-005": "Approved", "BRD-007": "draft", "BRD-006": "draft"} {
+		if _, err := st.DB().Exec(`UPDATE entities SET status = ? WHERE key = ?`, status, key); err != nil {
+			t.Fatal(err)
+		}
+	}
+	vs := vector.NewVec1(st.DB())
+	put := func(key, typ string, v ...float32) {
+		t.Helper()
+		if err := vs.Upsert(ctx, chunkID(t, st, key), v, typ, ""); err != nil {
+			t.Fatal(err)
+		}
+	}
+	put("BRD-001", "requirement", 1, 0, 0)
+	put("BRD-004", "requirement", 0.999, 0.01, 0)   // same direction as BRD-001, other status: candidate
+	put("BRD-005", "requirement", 0.9995, 0.005, 0) // same status as BRD-001 (case aside), other than BRD-004
+	put("BRD-006", "requirement", 0, 1, 0)          // far from everything
+	put("BRD-007", "requirement", 0.89, 0.456, 0)   // cosine distance 0.11 to BRD-001: over the line
+	put("FDS-001", "design", 1, 0, 0)               // same vector, other type
+	put("FDS-002", "design", 1, 0, 0)               // same type as FDS-001, same (empty) status
+
+	r, err = Run(ctx, st)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got [][2]string
+	for _, p := range r.Candidates {
+		got = append(got, [2]string{p.A, p.B})
+		if p.A >= p.B || p.Path != "docs/brd.md" || p.Line == 0 {
+			t.Errorf("bad pair %+v", p)
+		}
+	}
+	want := [][2]string{{"BRD-001", "BRD-004"}, {"BRD-004", "BRD-005"}}
+	if len(got) != len(want) || got[0] != want[0] || got[1] != want[1] {
+		t.Fatalf("Candidates = %v, want %v", got, want)
 	}
 }

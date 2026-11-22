@@ -2,16 +2,22 @@ package search
 
 import (
 	"context"
+	"errors"
 	"io/fs"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/wamra/specs-index/internal/config"
 	"github.com/wamra/specs-index/internal/corpus"
+	"github.com/wamra/specs-index/internal/embed"
+	"github.com/wamra/specs-index/internal/embedtest"
 	"github.com/wamra/specs-index/internal/indexer"
 	"github.com/wamra/specs-index/internal/store"
+	"github.com/wamra/specs-index/internal/vector"
 )
 
 func copyDir(t *testing.T, src, dst string) {
@@ -353,5 +359,241 @@ func TestModes(t *testing.T) {
 	all := run(t, st, root, "document", 0)
 	if len(all) > 10 {
 		t.Errorf("default K: got %d", len(all))
+	}
+}
+
+// embedded embeds every chunk of st with a fake server and returns the
+// embedder (model names the model, so two calls can differ).
+func embedded(t *testing.T, st *store.Store, model string) (embed.Embedder, *embedtest.Server) {
+	t.Helper()
+	srv := embedtest.New(768, "embeddinggemma", "other-model")
+	t.Cleanup(srv.Close)
+	e := newEmbedder(t, srv, model)
+	if _, err := embed.Pending(context.Background(), st, e, vector.NewVec1(st.DB())); err != nil {
+		t.Fatal(err)
+	}
+	return e, srv
+}
+
+func newEmbedder(t *testing.T, srv *embedtest.Server, model string) embed.Embedder {
+	t.Helper()
+	e, err := embed.New(config.Config{Provider: config.Providers{Embed: "ollama"}, Model: model, BaseURL: srv.URL, Dims: 768}, false)
+	if err != nil || e == nil {
+		t.Fatalf("embed.New: %v %v", e, err)
+	}
+	return e
+}
+
+func searchWith(t *testing.T, st *store.Store, e embed.Embedder, query, mode string, k int) ([]Hit, error) {
+	t.Helper()
+	q, err := ParseQuery(query)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return Search(context.Background(), st, q, Options{Mode: mode, K: k, Embedder: e})
+}
+
+func TestNoEmbedderAutoIsFTS(t *testing.T) {
+	_, st := indexedCorpus(t)
+	auto, err := searchWith(t, st, nil, "bulk upload", "auto", 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fts, err := searchWith(t, st, nil, "bulk upload", "fts", 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(auto) == 0 || !reflect.DeepEqual(keys(auto), keys(fts)) {
+		t.Fatalf("auto = %v, fts = %v", keys(auto), keys(fts))
+	}
+	for _, h := range auto {
+		if h.Source != "fts" {
+			t.Errorf("%s has source %s without an embedder", h.Key, h.Source)
+		}
+	}
+	for _, m := range []string{"vector", "hybrid"} {
+		if _, err := searchWith(t, st, nil, "bulk upload", m, 10); err == nil || !strings.Contains(err.Error(), "no embedder") {
+			t.Errorf("%s without an embedder: %v", m, err)
+		}
+	}
+}
+
+func TestHybridKeepsExactFirst(t *testing.T) {
+	_, st := indexedCorpus(t)
+	e, _ := embedded(t, st, "embeddinggemma")
+	// the words of the query are those of BRD-004, but the ID asked for is BRD-013
+	for _, mode := range []string{"hybrid", "vector", "auto"} {
+		hits, err := searchWith(t, st, e, "BRD-013 upload resume interrupted", mode, 5)
+		if err != nil {
+			t.Fatalf("%s: %v", mode, err)
+		}
+		if len(hits) == 0 || hits[0].Key != "BRD-013" || hits[0].Source != "exact" {
+			t.Fatalf("%s: first hit = %v, want BRD-013 (exact): %v", mode, hits, keys(hits))
+		}
+		seen := map[string]bool{}
+		for _, h := range hits {
+			if seen[h.Key] {
+				t.Errorf("%s: %s listed twice", mode, h.Key)
+			}
+			seen[h.Key] = true
+		}
+		if len(hits) < 2 {
+			t.Errorf("%s: only %d hit(s); the vector side should add more", mode, len(hits))
+		}
+	}
+}
+
+func TestHybridIncludesVectorOnlyHits(t *testing.T) {
+	_, st := indexedCorpus(t)
+	e, _ := embedded(t, st, "embeddinggemma")
+	// "banana" is in no document, so full text (implicit AND) finds nothing
+	fts, err := searchWith(t, st, e, "resume interrupted bulk upload banana", "fts", 5)
+	if err != nil || len(fts) != 0 {
+		t.Fatalf("fts = %v, %v; want none", keys(fts), err)
+	}
+	hits, err := searchWith(t, st, e, "resume interrupted bulk upload banana", "hybrid", 5)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(hits) == 0 || hits[0].Source != "vector" {
+		t.Fatalf("hybrid = %v; want vector hits", keys(hits))
+	}
+	if !contains(keys(hits), "BRD-004") {
+		t.Errorf("hybrid %v lacks BRD-004 (An interrupted bulk upload can be resumed)", keys(hits))
+	}
+	// auto with an embedder is hybrid
+	auto, err := searchWith(t, st, e, "resume interrupted bulk upload banana", "auto", 5)
+	if err != nil || !reflect.DeepEqual(keys(auto), keys(hits)) {
+		t.Errorf("auto = %v, %v; want %v", keys(auto), err, keys(hits))
+	}
+}
+
+func contains(l []string, s string) bool {
+	for _, x := range l {
+		if x == s {
+			return true
+		}
+	}
+	return false
+}
+
+func TestFilteredVectorSearch(t *testing.T) {
+	_, st := indexedCorpus(t)
+	e, _ := embedded(t, st, "embeddinggemma")
+	cases := []struct {
+		query string
+		check func(h Hit) bool
+	}{
+		{"upload files banana type:design", func(h Hit) bool { return h.Type == "design" }},
+		{"upload files banana status:draft", func(h Hit) bool { return strings.EqualFold(h.Status, "draft") }},
+		{"upload files banana type:requirement -status:approved", func(h Hit) bool { return h.Type == "requirement" && !strings.EqualFold(h.Status, "approved") }},
+		{"upload files banana tag:wip", func(h Hit) bool { return h.Type == "scenario" || h.Type == "feature" }},
+	}
+	for _, c := range cases {
+		for _, mode := range []string{"vector", "hybrid"} {
+			hits, err := searchWith(t, st, e, c.query, mode, 5)
+			if err != nil {
+				t.Fatalf("%s %q: %v", mode, c.query, err)
+			}
+			if len(hits) == 0 {
+				t.Errorf("%s %q: no hits", mode, c.query)
+			}
+			for _, h := range hits {
+				if !c.check(h) {
+					t.Errorf("%s %q: %s (%s/%s) violates the filter", mode, c.query, h.Key, h.Type, h.Status)
+				}
+			}
+		}
+	}
+	hits, err := searchWith(t, st, e, `upload banana -"resume"`, "vector", 20)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, h := range hits {
+		var text string
+		st.DB().QueryRow(`SELECT c.text FROM chunks c JOIN entities x ON x.id=c.entity_id WHERE x.key=?`, h.Key).Scan(&text)
+		if strings.Contains(strings.ToLower(text), "resume") {
+			t.Errorf("excluded phrase present in %s", h.Key)
+		}
+	}
+}
+
+func TestFingerprintMismatchRefusesVectorSearch(t *testing.T) {
+	_, st := indexedCorpus(t)
+	_, srv := embedded(t, st, "embeddinggemma")
+	other := newEmbedder(t, srv, "other-model")
+	for _, mode := range []string{"vector", "hybrid", "auto"} {
+		_, err := searchWith(t, st, other, "bulk upload", mode, 5)
+		if !errors.Is(err, embed.ErrFingerprintMismatch) {
+			t.Fatalf("%s: err = %v, want ErrFingerprintMismatch", mode, err)
+		}
+		if !strings.Contains(err.Error(), "index --reembed") {
+			t.Errorf("%s: error does not name `index --reembed`: %v", mode, err)
+		}
+	}
+	// full text and exact search keep working
+	for _, mode := range []string{"fts", "exact"} {
+		q := "bulk upload"
+		if mode == "exact" {
+			q = "BRD-003"
+		}
+		hits, err := searchWith(t, st, other, q, mode, 5)
+		if err != nil || len(hits) == 0 {
+			t.Errorf("%s with a mismatching embedder: %v, %v", mode, keys(hits), err)
+		}
+	}
+}
+
+func TestAutoFallsBackToFTS(t *testing.T) {
+	// an index with no embeddings yet
+	_, st := indexedCorpus(t)
+	srv := embedtest.New(768, "embeddinggemma")
+	defer srv.Close()
+	e := newEmbedder(t, srv, "embeddinggemma")
+	hits, err := searchWith(t, st, e, "bulk upload", "auto", 5)
+	if err != nil || len(hits) == 0 || srv.Requests.Load() != 0 {
+		t.Fatalf("auto on an un-embedded index: %v, %v (requests %d)", keys(hits), err, srv.Requests.Load())
+	}
+	if _, err := searchWith(t, st, e, "bulk upload", "hybrid", 5); !errors.Is(err, embed.ErrNotEmbedded) {
+		t.Errorf("hybrid on an un-embedded index: %v", err)
+	}
+	// an embedder that is down
+	e2, srv2 := embedded(t, st, "embeddinggemma")
+	srv2.Down.Store(true)
+	hits, err = searchWith(t, st, e2, "bulk upload", "auto", 5)
+	if err != nil || len(hits) == 0 {
+		t.Fatalf("auto with the embedder down: %v, %v", keys(hits), err)
+	}
+	if _, err := searchWith(t, st, e2, "bulk upload", "hybrid", 5); err == nil {
+		t.Error("hybrid with the embedder down: want an error")
+	}
+}
+
+func TestFuseReciprocalRank(t *testing.T) {
+	f := func(keys ...string) []found {
+		var out []found
+		for _, k := range keys {
+			out = append(out, found{Hit: Hit{Key: k}})
+		}
+		return out
+	}
+	got := fuse(f("a", "b", "c"), f("c", "a"))
+	var order []string
+	for _, h := range got {
+		order = append(order, h.Key)
+	}
+	if !reflect.DeepEqual(order, []string{"a", "c", "b"}) {
+		t.Fatalf("order = %v, want [a c b]", order)
+	}
+	want := 1.0/61 + 1.0/62
+	if d := got[0].Score - want; d > 1e-12 || d < -1e-12 {
+		t.Errorf("score of a = %v, want 1/(60+1) + 1/(60+2) = %v", got[0].Score, want)
+	}
+}
+
+func TestPlainText(t *testing.T) {
+	q, _ := ParseQuery(`resume "legal hold" OR upload -tag:wip -"dark mode" BRD-004`)
+	if got := plainText(q); got != "resume legal hold upload" {
+		t.Errorf("plainText = %q", got)
 	}
 }

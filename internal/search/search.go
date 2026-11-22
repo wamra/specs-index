@@ -10,23 +10,39 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
+	"github.com/wamra/specs-index/internal/embed"
+	"github.com/wamra/specs-index/internal/provider"
 	"github.com/wamra/specs-index/internal/store"
+	"github.com/wamra/specs-index/internal/vector"
 )
 
-// Options controls a search. Mode is auto, exact, fts, vector or hybrid; in
-// this version auto is exact-ID lookup followed by full text, and vector and
-// hybrid report that no embedder is configured. K defaults to 10. Root is the
-// workspace root used to mark stale hits; when empty staleness is not checked.
+// Options controls a search. Mode is auto, exact, fts, vector or hybrid.
+//
+// Exact-ID hits always come first. Without an Embedder, auto is exact-ID
+// lookup followed by full text, and vector and hybrid report that no embedder
+// is configured. With one, auto is hybrid: the full-text and the KNN lists are
+// merged by reciprocal-rank fusion, falling back to full text when the index
+// has no embeddings yet or the embedder is unreachable. vector and hybrid
+// refuse (embed.ErrFingerprintMismatch, embed.ErrNotEmbedded) rather than mix
+// embedders. K defaults to 10. Root is the workspace root used to mark stale
+// hits; when empty staleness is not checked.
 type Options struct {
-	Mode string
-	K    int
-	Root string
+	Mode     string
+	K        int
+	Root     string
+	Embedder embed.Embedder
+	// Vectors is the vector store; nil means the vec1 table of the index.
+	Vectors vector.Store
 }
 
-// Hit is one search result. Source is exact, fts or filter (a query made of
-// filters only). Score is the negated bm25 rank for fts hits, zero otherwise.
+// Hit is one search result. Source is exact, fts, vector or filter (a query
+// made of filters only); a hybrid hit found by both lists is fts. Score is the
+// negated bm25 rank for fts hits in fts mode, 1 - cosine distance for vector
+// hits in vector mode, the reciprocal-rank-fusion score in hybrid mode and
+// zero otherwise.
 type Hit struct {
 	Key, Type, Title, Path string
 	StartLine, EndLine     int
@@ -45,7 +61,8 @@ type docState struct {
 
 type found struct {
 	Hit
-	doc docState
+	doc  docState
+	dist float64 // cosine distance, vector hits only
 }
 
 // Search runs q against the index.
@@ -61,7 +78,9 @@ func Search(ctx context.Context, st *store.Store, q Query, o Options) ([]Hit, er
 	switch mode {
 	case "auto", "exact", "fts":
 	case "vector", "hybrid":
-		return nil, fmt.Errorf("%s search needs an embedder, but no embedder is configured", mode)
+		if o.Embedder == nil {
+			return nil, fmt.Errorf("%s search needs an embedder, but no embedder is configured", mode)
+		}
 	default:
 		return nil, fmt.Errorf("unknown search mode %q (use auto, exact, fts, vector or hybrid)", mode)
 	}
@@ -85,10 +104,40 @@ func Search(ctx context.Context, st *store.Store, q Query, o Options) ([]Hit, er
 		}
 		add(fs)
 	}
-	if mode != "exact" {
+	if mode == "vector" && len(q.IDs) == 0 && plainText(q) == "" {
+		return nil, errors.New("vector search needs query words")
+	}
+	useVec := (mode == "vector" || mode == "hybrid" || mode == "auto") && o.Embedder != nil
+	var vecHits []found
+	if useVec {
+		vs := o.Vectors
+		if vs == nil {
+			vs = vector.NewVec1(st.DB())
+		}
+		var err error
+		vecHits, err = s.vector(st, o.Embedder, vs, k+len(res))
+		switch {
+		case err == nil:
+		case mode == "auto" && (errors.Is(err, embed.ErrNotEmbedded) || errors.Is(err, provider.ErrDown)):
+			vecHits, useVec = nil, false // nothing to merge: plain full text
+		default:
+			return nil, err
+		}
+	}
+	switch {
+	case mode == "exact":
+	case mode == "vector":
+		for i := range vecHits {
+			vecHits[i].Score = 1 - vecHits[i].dist
+		}
+		add(vecHits)
+	default:
 		fs, err := s.text(k + len(res))
 		if err != nil {
 			return nil, err
+		}
+		if useVec {
+			fs = fuse(fs, vecHits)
 		}
 		add(fs)
 	}
@@ -317,4 +366,168 @@ func isStale(root, rel string, d docState) bool {
 		return true
 	}
 	return hex.EncodeToString(h.Sum(nil)) != d.sha.String
+}
+
+// rrfK is the constant of reciprocal-rank fusion: a hit at rank r (1-based) in
+// a list scores 1/(rrfK+r), and scores add up across lists.
+const rrfK = 60
+
+// overFetch is how many times k the KNN side is asked for when the query has
+// filters vec1 cannot apply inside its search (everything but a positive
+// type: or status:), because those hits are dropped after the lookup.
+const overFetch = 5
+
+// fuse merges ranked lists by reciprocal-rank fusion. A hit in several lists
+// keeps its first occurrence (so list order is also the preference for which
+// copy, with its snippet, is shown). Ties break by key.
+func fuse(lists ...[]found) []found {
+	score := map[string]float64{}
+	first := map[string]found{}
+	for _, l := range lists {
+		for i, f := range l {
+			score[f.Key] += 1 / float64(rrfK+i+1)
+			if _, ok := first[f.Key]; !ok {
+				first[f.Key] = f
+			}
+		}
+	}
+	out := make([]found, 0, len(first))
+	for k, f := range first {
+		f.Score = score[k]
+		out = append(out, f)
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Score != out[j].Score {
+			return out[i].Score > out[j].Score
+		}
+		return out[i].Key < out[j].Key
+	})
+	return out
+}
+
+// plainText is the free-text words of q for embedding: FTS quoting and the
+// AND/OR/NOT operators removed.
+func plainText(q Query) string {
+	rs := []rune(q.Text)
+	var words []string
+	for i := 0; i < len(rs); {
+		switch {
+		case rs[i] == ' ':
+			i++
+		case rs[i] == '"':
+			var b []rune
+			for i++; i < len(rs); i++ {
+				if rs[i] == '"' {
+					if i+1 < len(rs) && rs[i+1] == '"' {
+						b = append(b, '"')
+						i++
+						continue
+					}
+					i++
+					break
+				}
+				b = append(b, rs[i])
+			}
+			words = append(words, string(b))
+		default:
+			j := i
+			for j < len(rs) && rs[j] != ' ' {
+				j++
+			}
+			if w := string(rs[i:j]); w != "AND" && w != "OR" && w != "NOT" {
+				words = append(words, strings.TrimSuffix(w, "*"))
+			}
+			i = j
+		}
+	}
+	return strings.Join(words, " ")
+}
+
+// vecFilter picks the first positive type: and status: filters, which vec1
+// applies inside its search; the rest is applied afterwards (s.where is
+// applied to every KNN hit, so those two are re-checked there too).
+func (s *searcher) vecFilter() (f vector.Filter, post bool) {
+	for _, fl := range s.q.Filters {
+		switch {
+		case fl.Field == "type" && !fl.Negate && f.Type == "":
+			f.Type = fl.Value
+		case fl.Field == "status" && !fl.Negate && f.Status == "":
+			f.Status = fl.Value
+		default:
+			post = true
+		}
+	}
+	return f, post || len(s.q.Has) > 0 || len(s.q.HasNot) > 0 || len(s.q.Exclude) > 0
+}
+
+// vector runs the KNN side: it embeds the query's words, looks up the nearest
+// chunks (filtered by type/status inside vec1, over-fetched by overFetch when
+// other filters apply afterwards) and returns them nearest first. It checks
+// the embedder against the index fingerprint first.
+func (s *searcher) vector(st *store.Store, e embed.Embedder, vs vector.Store, k int) ([]found, error) {
+	text := plainText(s.q)
+	if text == "" {
+		return nil, nil
+	}
+	if err := embed.CheckFingerprint(s.ctx, st, e); err != nil {
+		return nil, err
+	}
+	qv, err := e.EmbedQuery(s.ctx, text)
+	if err != nil {
+		return nil, fmt.Errorf("embed query: %w", err)
+	}
+	f, post := s.vecFilter()
+	n := k
+	if post {
+		n = k * overFetch
+	}
+	ms, err := vs.KNN(s.ctx, qv, n, f)
+	if err != nil {
+		return nil, err
+	}
+	if len(ms) == 0 {
+		return nil, nil
+	}
+	ph := make([]string, len(ms))
+	args := make([]any, 0, len(ms)+len(s.args)+len(s.q.Exclude))
+	for i, m := range ms {
+		ph[i] = "?"
+		args = append(args, m.ID)
+	}
+	where, wargs := s.where, s.args
+	for _, ex := range s.q.Exclude {
+		where += ` AND lower(c.text) NOT LIKE ? ESCAPE '\'`
+		wargs = append(append([]any(nil), wargs...), "%"+likeEscape(ex)+"%")
+	}
+	rows, err := s.db.QueryContext(s.ctx, baseSelect+`, substr(COALESCE(e.body,''),1,200), 0, c.id
+		FROM chunks c JOIN entities e ON e.id = c.entity_id JOIN documents d ON d.id = e.doc_id
+		WHERE c.id IN (`+strings.Join(ph, ",")+`)`+where, append(args, wargs...)...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	byChunk := map[int64]found{}
+	for rows.Next() {
+		var f found
+		var snippet sql.NullString
+		var sc sql.NullFloat64
+		var cid int64
+		if err := rows.Scan(&f.Key, &f.Type, &f.Title, &f.Path, &f.StartLine, &f.EndLine, &f.Status,
+			&f.doc.size, &f.doc.mtime, &f.doc.sha, &snippet, &sc, &cid); err != nil {
+			return nil, err
+		}
+		f.Snippet, f.Source = oneLine(snippet.String), "vector"
+		byChunk[cid] = f
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	var out []found
+	for _, m := range ms {
+		if f, ok := byChunk[m.ID]; ok {
+			f.dist = m.Distance
+			out = append(out, f)
+		}
+	}
+	return out, nil
 }

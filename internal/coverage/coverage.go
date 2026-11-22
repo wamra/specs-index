@@ -8,8 +8,10 @@ import (
 	"context"
 	"database/sql"
 	"sort"
+	"strings"
 
 	"github.com/wamra/specs-index/internal/store"
+	"github.com/wamra/specs-index/internal/vector"
 )
 
 // Item is an entity named in a coverage list.
@@ -47,7 +49,7 @@ type Duplicate struct {
 }
 
 // Pair is two keys. For Conflicts, A < B and Path/Line locate the first
-// declaration (either side). Candidates are filled by a later task.
+// declaration (either side). For Candidates, A < B and Path/Line locate A.
 type Pair struct {
 	A, B string
 	Path string
@@ -61,7 +63,10 @@ type Pair struct {
 // no explicit verified_by edge (to a scenario or an acceptance criterion; the
 // corpus has no design verified only by an AC, so this matches the truth's
 // designs_without_scenario). UnlinkedScenarios: scenarios with no explicit
-// incoming verified_by edge.
+// incoming verified_by edge. Candidates: pairs of same-type entities whose
+// embeddings are closer than CandidateMaxDistance (cosine) but whose statuses
+// differ; they are suggestions to look at, never conflicts. It is empty when
+// the index has no vectors.
 type Report struct {
 	RequirementsWithoutDesign  []Item
 	DesignsWithoutVerification []Item
@@ -71,6 +76,10 @@ type Report struct {
 	Conflicts                  []Pair
 	Candidates                 []Pair
 }
+
+// CandidateMaxDistance is the cosine distance below which two same-type
+// entities with different statuses are listed as candidates.
+const CandidateMaxDistance = 0.10
 
 const itemSelect = `SELECT e.key, e.type, e.title, d.path, e.start_line FROM entities e JOIN documents d ON d.id = e.doc_id `
 
@@ -174,13 +183,103 @@ func Run(ctx context.Context, st *store.Store) (Report, error) {
 	if err != nil {
 		return r, err
 	}
-	defer drows.Close()
 	for drows.Next() {
 		var d Duplicate
 		if err := drows.Scan(&d.Key, &d.Path, &d.Line, &d.Detail); err != nil {
+			drows.Close()
 			return r, err
 		}
 		r.Duplicates = append(r.Duplicates, d)
 	}
-	return r, drows.Err()
+	if err := drows.Close(); err != nil {
+		return r, err
+	}
+	if err := drows.Err(); err != nil {
+		return r, err
+	}
+	if r.Candidates, err = candidates(ctx, db); err != nil {
+		return r, err
+	}
+	return r, nil
+}
+
+// candidates finds the near-duplicate pairs from the stored vectors.
+func candidates(ctx context.Context, db *sql.DB) ([]Pair, error) {
+	out := []Pair{}
+	vs := vector.NewVec1(db)
+	metas, err := vs.Metas(ctx)
+	if err != nil || len(metas) == 0 {
+		return out, err
+	}
+	type info struct {
+		key, typ, status, path string
+		line                   int
+	}
+	rows, err := db.QueryContext(ctx, `SELECT c.id, e.key, e.type, COALESCE(e.status, ''), d.path, COALESCE(e.start_line, 0)
+		FROM chunks c JOIN entities e ON e.id = c.entity_id JOIN documents d ON d.id = e.doc_id ORDER BY e.key`)
+	if err != nil {
+		return out, err
+	}
+	byChunk := map[int64]info{}
+	var order []int64
+	for rows.Next() {
+		var id int64
+		var i info
+		if err := rows.Scan(&id, &i.key, &i.typ, &i.status, &i.path, &i.line); err != nil {
+			rows.Close()
+			return out, err
+		}
+		if _, ok := metas[id]; ok {
+			byChunk[id] = i
+			order = append(order, id)
+		}
+	}
+	if err := rows.Close(); err != nil {
+		return out, err
+	}
+	type pairKey struct{ a, b string }
+	seen := map[pairKey]bool{}
+	for _, id := range order {
+		self := byChunk[id]
+		en, ok, err := vs.Get(ctx, id)
+		if err != nil {
+			return out, err
+		}
+		if !ok {
+			continue
+		}
+		// Ask for more neighbours until the farthest one returned is out of
+		// range, so a cluster of near-duplicates is never cut off.
+		for k := 8; ; k *= 4 {
+			ms, err := vs.KNN(ctx, en.Vec, k, vector.Filter{Type: self.typ})
+			if err != nil {
+				return out, err
+			}
+			for _, m := range ms {
+				o, ok := byChunk[m.ID]
+				if !ok || m.ID == id || m.Distance >= CandidateMaxDistance ||
+					strings.EqualFold(strings.TrimSpace(o.status), strings.TrimSpace(self.status)) {
+					continue
+				}
+				a, b := self, o
+				if b.key < a.key {
+					a, b = b, a
+				}
+				if !seen[pairKey{a.key, b.key}] {
+					seen[pairKey{a.key, b.key}] = true
+					out = append(out, Pair{A: a.key, B: b.key, Path: a.path, Line: a.line})
+				}
+			}
+			if len(ms) < k || ms[len(ms)-1].Distance >= CandidateMaxDistance {
+				break
+			}
+		}
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].A != out[j].A {
+			return out[i].A < out[j].A
+		}
+		return out[i].B < out[j].B
+	})
+	return out, nil
 }
