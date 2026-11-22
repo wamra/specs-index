@@ -1,0 +1,814 @@
+{
+ "config": "B",
+ "label": "B: SQLite + FTS5 + vec1, EmbeddingGemma (Ollama)",
+ "status": "ok",
+ "date": "2026-11-22",
+ "machine": {
+  "description": "Apple Silicon desktop, 128 GB RAM",
+  "os": "darwin",
+  "arch": "arm64",
+  "cpus": 20,
+  "go_version": "go1.26.0"
+ },
+ "corpus": {
+  "documents": 11,
+  "entities": 88,
+  "chunks": 88,
+  "queries": 53
+ },
+ "embedder": {
+  "provider": "ollama",
+  "model": "embeddinggemma",
+  "fingerprint": "ollama|embeddinggemma|768|title: none | text: |v1"
+ },
+ "search_mode": "hybrid",
+ "repeats": 20,
+ "warmup_passes": 1,
+ "latency_note": "wall time of api.Search per query in-process, including the query-embedding call for embedding configurations",
+ "metrics_all": {
+  "queries": 53,
+  "recall_at_5": 1,
+  "mrr_at_10": 0.946541,
+  "exact_id_queries": 14,
+  "exact_id_accuracy_at_1": 1,
+  "absent_violations": 0,
+  "per_category": {
+   "exact_id": {
+    "queries": 14,
+    "recall_at_5": 1,
+    "mrr_at_10": 1,
+    "exact_id_queries": 14,
+    "exact_id_accuracy_at_1": 1,
+    "absent_violations": 0
+   },
+   "filtered": {
+    "queries": 9,
+    "recall_at_5": 1,
+    "mrr_at_10": 0.925926,
+    "exact_id_queries": 0,
+    "exact_id_accuracy_at_1": 0,
+    "absent_violations": 0
+   },
+   "keyword": {
+    "queries": 16,
+    "recall_at_5": 1,
+    "mrr_at_10": 0.958333,
+    "exact_id_queries": 0,
+    "exact_id_accuracy_at_1": 0,
+    "absent_violations": 0
+   },
+   "semantic": {
+    "queries": 14,
+    "recall_at_5": 1,
+    "mrr_at_10": 0.892857,
+    "exact_id_queries": 0,
+    "exact_id_accuracy_at_1": 0,
+    "absent_violations": 0
+   }
+  }
+ },
+ "metrics_unfiltered": {
+  "queries": 44,
+  "recall_at_5": 1,
+  "mrr_at_10": 0.950758,
+  "exact_id_queries": 14,
+  "exact_id_accuracy_at_1": 1,
+  "absent_violations": 0,
+  "per_category": {
+   "exact_id": {
+    "queries": 14,
+    "recall_at_5": 1,
+    "mrr_at_10": 1,
+    "exact_id_queries": 14,
+    "exact_id_accuracy_at_1": 1,
+    "absent_violations": 0
+   },
+   "keyword": {
+    "queries": 16,
+    "recall_at_5": 1,
+    "mrr_at_10": 0.958333,
+    "exact_id_queries": 0,
+    "exact_id_accuracy_at_1": 0,
+    "absent_violations": 0
+   },
+   "semantic": {
+    "queries": 14,
+    "recall_at_5": 1,
+    "mrr_at_10": 0.892857,
+    "exact_id_queries": 0,
+    "exact_id_accuracy_at_1": 0,
+    "absent_violations": 0
+   }
+  }
+ },
+ "latency": {
+  "samples": 1060,
+  "p50_ms": 58.359,
+  "p95_ms": 104.12
+ },
+ "mapping_recall": {
+  "found": 129,
+  "total": 129,
+  "recall": 1,
+  "note": "trace over explicit edges, depth 1, both directions, all six edge kinds; independent of the embedder"
+ },
+ "index": {
+  "size_bytes": 585728,
+  "size_note": "SQLite file after WAL checkpoint, includes FTS5 and vec1 tables",
+  "parse_seconds": 0.010069,
+  "embed_seconds": 2.765038,
+  "chunks_embedded": 88
+ },
+ "peak_rss_bytes": 29491200,
+ "peak_rss_note": "ru_maxrss of the whole measured process: index build, embedding and all queries",
+ "embedding_cost": {
+  "usd": 0,
+  "note": "local model, no per-token cost"
+ },
+ "per_query": [
+  {
+   "q": "BRD-006",
+   "category": "exact_id",
+   "ranking": [
+    "BRD-006"
+   ]
+  },
+  {
+   "q": "FDS-005",
+   "category": "exact_id",
+   "ranking": [
+    "FDS-005",
+    "FDS-003"
+   ]
+  },
+  {
+   "q": "single sign-on identity provider",
+   "category": "keyword",
+   "ranking": [
+    "BRD-011",
+    "SCN-102",
+    "FDS-007",
+    "AC-006",
+    "BRD-001",
+    "features/access.feature#Viewer cannot edit a document",
+    "features/access.feature",
+    "features/access.feature#Warn before a session times out",
+    "FDS-008",
+    "BRD-012"
+   ]
+  },
+  {
+   "q": "fax",
+   "category": "keyword",
+   "ranking": [
+    "BRD-023",
+    "FDS-012",
+    "FDS-003",
+    "features/operations.feature#Export a folder as an archive",
+    "FDS-009",
+    "FDS-013",
+    "FDS-014",
+    "FDS-010",
+    "features/bulk_upload.feature#Upload a folder of documents",
+    "FDS-015"
+   ]
+  },
+  {
+   "q": "daily email digest",
+   "category": "keyword",
+   "ranking": [
+    "BRD-021",
+    "features/bulk_upload.feature#Upload a folder of documents",
+    "features/bulk_upload.feature",
+    "FDS-012",
+    "features/bulk_upload.feature#Skip duplicates in a batch",
+    "features/bulk_upload.feature#Resume an interrupted upload",
+    "features/upload.feature#Upload a single document",
+    "FDS-003",
+    "features/search.feature",
+    "features/search.feature#Exact title wins over text matches"
+   ]
+  },
+  {
+   "q": "resume interrupted upload",
+   "category": "keyword",
+   "ranking": [
+    "BRD-004",
+    "features/bulk_upload.feature#Resume an interrupted upload",
+    "AC-002",
+    "FDS-002",
+    "features/upload.feature#Show progress while a file uploads",
+    "features/upload.feature",
+    "features/upload.feature#Upload a single document",
+    "features/upload.feature#Reject an oversized file",
+    "features/upload.feature#Reject unsupported file types",
+    "features/bulk_upload.feature#Upload a folder of documents"
+   ]
+  },
+  {
+   "q": "status:deprecated",
+   "category": "filtered",
+   "ranking": [
+    "BRD-023"
+   ]
+  },
+  {
+   "q": "type:requirement -has:fds",
+   "category": "filtered",
+   "ranking": [
+    "BRD-015",
+    "BRD-019",
+    "BRD-023"
+   ]
+  },
+  {
+   "q": "legal hold -tag:wip",
+   "category": "filtered",
+   "ranking": [
+    "BRD-017",
+    "features/lifecycle.feature",
+    "FDS-011",
+    "AC-009",
+    "features/lifecycle.feature#Retention report lists expiring documents",
+    "features/lifecycle.feature#Retention expiry archives a document",
+    "BRD-016",
+    "features/search.feature#Search inside one folder",
+    "features/sharing.feature#Create an expiring share link",
+    "features/access.feature"
+   ]
+  },
+  {
+   "q": "viewer cannot restore a version",
+   "category": "keyword",
+   "ranking": [
+    "features/versions.feature#Viewer cannot restore a version",
+    "features/versions.feature",
+    "features/versions.feature#Restoring creates a new version",
+    "SCN-101",
+    "BRD-009",
+    "features/access.feature#Viewer cannot edit a document",
+    "FDS-006",
+    "AC-007",
+    "features/versions.feature#List the versions of a document",
+    "features/operations.feature#Notify watchers of a new version"
+   ]
+  },
+  {
+   "q": "type:scenario retention",
+   "category": "filtered",
+   "ranking": [
+    "features/lifecycle.feature#Retention report lists expiring documents",
+    "features/lifecycle.feature#Legal hold blocks deletion",
+    "features/lifecycle.feature#Retention expiry archives a document",
+    "features/sharing.feature#Create an expiring share link",
+    "features/versions.feature#Restoring creates a new version",
+    "SCN-101",
+    "features/access.feature#Warn before a session times out",
+    "features/versions.feature#Viewer cannot restore a version",
+    "features/bulk_upload.feature#Resume an interrupted upload",
+    "features/search.feature#Filter results by status"
+   ]
+  },
+  {
+   "q": "BRD-001",
+   "category": "exact_id",
+   "ranking": [
+    "BRD-001"
+   ]
+  },
+  {
+   "q": "BRD-017",
+   "category": "exact_id",
+   "ranking": [
+    "BRD-017"
+   ]
+  },
+  {
+   "q": "BRD-025",
+   "category": "exact_id",
+   "ranking": [
+    "BRD-025"
+   ]
+  },
+  {
+   "q": "FDS-011",
+   "category": "exact_id",
+   "ranking": [
+    "FDS-011"
+   ]
+  },
+  {
+   "q": "FDS-014",
+   "category": "exact_id",
+   "ranking": [
+    "FDS-014"
+   ]
+  },
+  {
+   "q": "AC-003",
+   "category": "exact_id",
+   "ranking": [
+    "AC-003"
+   ]
+  },
+  {
+   "q": "AC-007",
+   "category": "exact_id",
+   "ranking": [
+    "AC-007"
+   ]
+  },
+  {
+   "q": "SCN-101",
+   "category": "exact_id",
+   "ranking": [
+    "SCN-101"
+   ]
+  },
+  {
+   "q": "SCN-102",
+   "category": "exact_id",
+   "ranking": [
+    "SCN-102"
+   ]
+  },
+  {
+   "q": "BRD-023",
+   "category": "exact_id",
+   "ranking": [
+    "BRD-023"
+   ]
+  },
+  {
+   "q": "FDS-002",
+   "category": "exact_id",
+   "ranking": [
+    "FDS-002"
+   ]
+  },
+  {
+   "q": "features/sharing.feature#Revoke a share link",
+   "category": "exact_id",
+   "ranking": [
+    "features/sharing.feature#Revoke a share link",
+    "features/sharing.feature",
+    "features/sharing.feature#Disabled external sharing blocks new links",
+    "features/sharing.feature#Create an expiring share link",
+    "features/sharing.feature#Share link opens a read-only preview",
+    "AC-008",
+    "BRD-014",
+    "BRD-013",
+    "FDS-009",
+    "features/versions.feature#Viewer cannot restore a version"
+   ]
+  },
+  {
+   "q": "legal hold",
+   "category": "keyword",
+   "ranking": [
+    "BRD-017",
+    "features/lifecycle.feature#Legal hold blocks deletion",
+    "features/lifecycle.feature",
+    "FDS-011",
+    "AC-009",
+    "features/lifecycle.feature#Retention report lists expiring documents",
+    "features/lifecycle.feature#Retention expiry archives a document",
+    "BRD-016",
+    "features/search.feature#Search inside one folder",
+    "features/sharing.feature#Create an expiring share link"
+   ]
+  },
+  {
+   "q": "audit log",
+   "category": "keyword",
+   "ranking": [
+    "BRD-015",
+    "AC-009",
+    "features/lifecycle.feature#Legal hold blocks deletion",
+    "BRD-008",
+    "features/access.feature",
+    "BRD-020",
+    "features/access.feature#Admin assigns a role to a group",
+    "AC-007",
+    "features/lifecycle.feature#Retention expiry archives a document",
+    "features/access.feature#Warn before a session times out"
+   ]
+  },
+  {
+   "q": "share link expiry date",
+   "category": "keyword",
+   "ranking": [
+    "features/sharing.feature#Create an expiring share link",
+    "AC-008",
+    "BRD-013",
+    "features/sharing.feature",
+    "features/sharing.feature#Revoke a share link",
+    "features/sharing.feature#Disabled external sharing blocks new links",
+    "FDS-009",
+    "features/sharing.feature#Share link opens a read-only preview",
+    "features/lifecycle.feature#Retention expiry archives a document",
+    "BRD-014"
+   ]
+  },
+  {
+   "q": "WCAG",
+   "category": "keyword",
+   "ranking": [
+    "BRD-024",
+    "FDS-015",
+    "AC-004",
+    "features/access.feature#Viewer cannot edit a document",
+    "features/search.feature#Show a message when nothing matches",
+    "features/access.feature",
+    "AC-006",
+    "AC-007",
+    "BRD-020",
+    "features/search.feature#Excluded tag hides matching results"
+   ]
+  },
+  {
+   "q": "checksum file",
+   "category": "keyword",
+   "ranking": [
+    "AC-010",
+    "features/operations.feature#Export a folder as an archive",
+    "FDS-015",
+    "FDS-002",
+    "AC-002",
+    "features/upload.feature#Upload a single document",
+    "AC-001",
+    "features/upload.feature#Reject unsupported file types",
+    "features/versions.feature#List the versions of a document",
+    "AC-009"
+   ]
+  },
+  {
+   "q": "retention period",
+   "category": "keyword",
+   "ranking": [
+    "BRD-016",
+    "features/lifecycle.feature",
+    "features/lifecycle.feature#Retention report lists expiring documents",
+    "FDS-011",
+    "features/lifecycle.feature#Retention expiry archives a document",
+    "features/lifecycle.feature#Legal hold blocks deletion",
+    "AC-009",
+    "BRD-017",
+    "FDS-006",
+    "features/sharing.feature#Create an expiring share link"
+   ]
+  },
+  {
+   "q": "role permission evaluator",
+   "category": "keyword",
+   "ranking": [
+    "FDS-008",
+    "features/access.feature#Admin assigns a role to a group",
+    "BRD-012",
+    "features/access.feature",
+    "features/access.feature#Viewer cannot edit a document",
+    "features/access.feature#Warn before a session times out",
+    "features/search.feature#Filter results by status",
+    "features/operations.feature",
+    "features/sharing.feature#Share link opens a read-only preview",
+    "BRD-015"
+   ]
+  },
+  {
+   "q": "offline",
+   "category": "keyword",
+   "ranking": [
+    "BRD-025",
+    "features/sharing.feature#Disabled external sharing blocks new links",
+    "BRD-014",
+    "features/access.feature#Warn before a session times out",
+    "features/search.feature#Excluded tag hides matching results",
+    "features/access.feature#Viewer cannot edit a document",
+    "features/search.feature#Filter results by status",
+    "features/bulk_upload.feature#Resume an interrupted upload",
+    "features/search.feature#Show a message when nothing matches",
+    "features/sharing.feature#Create an expiring share link"
+   ]
+  },
+  {
+   "q": "preview annotations highlights",
+   "category": "keyword",
+   "ranking": [
+    "BRD-019",
+    "features/operations.feature",
+    "features/sharing.feature#Share link opens a read-only preview",
+    "features/operations.feature#Render a PDF preview",
+    "features/operations.feature#Notify watchers of a new version",
+    "features/search.feature#Filter results by status",
+    "features/upload.feature#Show progress while a file uploads",
+    "features/access.feature#Warn before a session times out",
+    "features/versions.feature#Restoring creates a new version",
+    "BRD-020"
+   ]
+  },
+  {
+   "q": "retention report",
+   "category": "keyword",
+   "ranking": [
+    "features/lifecycle.feature#Retention report lists expiring documents",
+    "features/lifecycle.feature",
+    "features/lifecycle.feature#Legal hold blocks deletion",
+    "FDS-011",
+    "BRD-016",
+    "AC-009",
+    "features/lifecycle.feature#Retention expiry archives a document",
+    "BRD-017",
+    "BRD-008",
+    "BRD-023"
+   ]
+  },
+  {
+   "q": "warn session times out",
+   "category": "keyword",
+   "ranking": [
+    "features/access.feature#Warn before a session times out",
+    "features/sharing.feature#Create an expiring share link",
+    "AC-008",
+    "AC-007",
+    "features/access.feature#Viewer cannot edit a document",
+    "features/bulk_upload.feature#Resume an interrupted upload",
+    "features/access.feature",
+    "BRD-004",
+    "SCN-101",
+    "features/versions.feature#Viewer cannot restore a version"
+   ]
+  },
+  {
+   "q": "people outside the company can look at a file until a deadline",
+   "category": "semantic",
+   "ranking": [
+    "BRD-013",
+    "BRD-010",
+    "BRD-014",
+    "features/sharing.feature#Create an expiring share link",
+    "features/sharing.feature#Share link opens a read-only preview",
+    "BRD-022",
+    "AC-009",
+    "features/lifecycle.feature#Retention expiry archives a document",
+    "BRD-016",
+    "features/access.feature#Viewer cannot edit a document"
+   ]
+  },
+  {
+   "q": "keep documents from being erased while a lawsuit is pending",
+   "category": "semantic",
+   "ranking": [
+    "BRD-017",
+    "features/lifecycle.feature#Legal hold blocks deletion",
+    "BRD-016",
+    "AC-009",
+    "features/lifecycle.feature",
+    "features/lifecycle.feature#Retention expiry archives a document",
+    "features/bulk_upload.feature#Resume an interrupted upload",
+    "features/lifecycle.feature#Retention report lists expiring documents",
+    "features/sharing.feature#Create an expiring share link",
+    "FDS-011"
+   ]
+  },
+  {
+   "q": "who did what is recorded for compliance",
+   "category": "semantic",
+   "ranking": [
+    "BRD-015",
+    "AC-009",
+    "BRD-020",
+    "features/access.feature",
+    "FDS-008",
+    "AC-004",
+    "features/lifecycle.feature#Retention expiry archives a document",
+    "FDS-007",
+    "BRD-010",
+    "AC-001"
+   ]
+  },
+  {
+   "q": "log in once with company credentials",
+   "category": "semantic",
+   "ranking": [
+    "SCN-102",
+    "BRD-011",
+    "AC-006",
+    "features/access.feature#Warn before a session times out",
+    "features/upload.feature#Upload a single document",
+    "features/access.feature",
+    "FDS-007",
+    "features/bulk_upload.feature",
+    "features/access.feature#Viewer cannot edit a document",
+    "features/upload.feature"
+   ]
+  },
+  {
+   "q": "turn off sharing with outsiders for the whole organization",
+   "category": "semantic",
+   "ranking": [
+    "BRD-014",
+    "features/sharing.feature#Disabled external sharing blocks new links",
+    "features/sharing.feature#Share link opens a read-only preview",
+    "BRD-013",
+    "features/sharing.feature",
+    "features/sharing.feature#Revoke a share link",
+    "features/sharing.feature#Create an expiring share link",
+    "features/access.feature",
+    "FDS-009",
+    "features/access.feature#Viewer cannot edit a document"
+   ]
+  },
+  {
+   "q": "work without an internet connection",
+   "category": "semantic",
+   "ranking": [
+    "BRD-025",
+    "AC-006",
+    "features/bulk_upload.feature#Resume an interrupted upload",
+    "BRD-014",
+    "BRD-004",
+    "BRD-018",
+    "SCN-102",
+    "features/sharing.feature#Disabled external sharing blocks new links",
+    "features/access.feature#Viewer cannot edit a document",
+    "AC-002"
+   ]
+  },
+  {
+   "q": "get a message when a followed file is modified",
+   "category": "semantic",
+   "ranking": [
+    "features/operations.feature#Notify watchers of a new version",
+    "BRD-020",
+    "features/upload.feature#Reject unsupported file types",
+    "features/upload.feature#Show progress while a file uploads",
+    "features/upload.feature#Upload a single document",
+    "features/bulk_upload.feature",
+    "features/access.feature#Viewer cannot edit a document",
+    "features/operations.feature",
+    "BRD-015",
+    "features/upload.feature#Reject an oversized file"
+   ]
+  },
+  {
+   "q": "pictures of pages shown in the browser",
+   "category": "semantic",
+   "ranking": [
+    "BRD-018",
+    "FDS-010",
+    "features/operations.feature#Render a PDF preview",
+    "features/search.feature#Show a message when nothing matches",
+    "features/operations.feature",
+    "BRD-002",
+    "FDS-005",
+    "BRD-019",
+    "features/sharing.feature#Share link opens a read-only preview",
+    "BRD-025"
+   ]
+  },
+  {
+   "q": "go back to an old revision",
+   "category": "semantic",
+   "ranking": [
+    "BRD-009",
+    "features/versions.feature",
+    "features/versions.feature#Restoring creates a new version",
+    "features/versions.feature#Viewer cannot restore a version",
+    "SCN-101",
+    "FDS-006",
+    "BRD-008",
+    "features/versions.feature#List the versions of a document",
+    "BRD-004",
+    "features/sharing.feature#Revoke a share link"
+   ]
+  },
+  {
+   "q": "files are removed automatically after a set time",
+   "category": "semantic",
+   "ranking": [
+    "BRD-016",
+    "features/lifecycle.feature#Retention expiry archives a document",
+    "AC-009",
+    "features/lifecycle.feature#Retention report lists expiring documents",
+    "features/lifecycle.feature",
+    "features/lifecycle.feature#Legal hold blocks deletion",
+    "BRD-017",
+    "BRD-004",
+    "features/sharing.feature#Create an expiring share link",
+    "features/access.feature#Warn before a session times out"
+   ]
+  },
+  {
+   "q": "screen reader and keyboard support",
+   "category": "semantic",
+   "ranking": [
+    "FDS-015",
+    "BRD-024",
+    "features/access.feature#Viewer cannot edit a document",
+    "features/search.feature#Show a message when nothing matches",
+    "features/upload.feature#Reject unsupported file types",
+    "features/versions.feature#Viewer cannot restore a version",
+    "features/search.feature",
+    "BRD-025",
+    "features/sharing.feature#Share link opens a read-only preview",
+    "features/access.feature#Admin assigns a role to a group"
+   ]
+  },
+  {
+   "q": "drag a whole directory to send many files",
+   "category": "semantic",
+   "ranking": [
+    "BRD-003",
+    "features/bulk_upload.feature#Upload a folder of documents",
+    "features/bulk_upload.feature",
+    "features/bulk_upload.feature#Resume an interrupted upload",
+    "features/bulk_upload.feature#Skip duplicates in a batch",
+    "BRD-002",
+    "FDS-002",
+    "BRD-004",
+    "features/upload.feature#Show progress while a file uploads",
+    "features/upload.feature#Upload a single document"
+   ]
+  },
+  {
+   "q": "take a folder with its history out of the portal",
+   "category": "semantic",
+   "ranking": [
+    "BRD-022",
+    "FDS-013",
+    "FDS-014",
+    "BRD-001",
+    "features/versions.feature",
+    "features/operations.feature#Export a folder as an archive",
+    "features/search.feature#Search inside one folder",
+    "FDS-008",
+    "features/versions.feature#Viewer cannot restore a version",
+    "FDS-006"
+   ]
+  },
+  {
+   "q": "which component picks the strongest role for a user",
+   "category": "semantic",
+   "ranking": [
+    "FDS-008",
+    "features/access.feature#Admin assigns a role to a group",
+    "BRD-012",
+    "features/access.feature",
+    "features/sharing.feature#Share link opens a read-only preview",
+    "AC-004",
+    "features/search.feature#Filter results by status",
+    "FDS-003",
+    "features/versions.feature",
+    "FDS-007"
+   ]
+  },
+  {
+   "q": "status:draft priority:P3",
+   "category": "filtered",
+   "ranking": [
+    "BRD-019"
+   ]
+  },
+  {
+   "q": "status:draft type:requirement upload",
+   "category": "filtered",
+   "ranking": [
+    "BRD-004",
+    "BRD-009",
+    "BRD-017",
+    "BRD-015",
+    "BRD-019",
+    "BRD-021",
+    "BRD-025"
+   ]
+  },
+  {
+   "q": "priority:P0 type:requirement search",
+   "category": "filtered",
+   "ranking": [
+    "BRD-005",
+    "BRD-006",
+    "BRD-001",
+    "BRD-010",
+    "BRD-002",
+    "BRD-011",
+    "BRD-012"
+   ]
+  },
+  {
+   "q": "type:design -has:scenario",
+   "category": "filtered",
+   "ranking": [
+    "FDS-014",
+    "FDS-015"
+   ]
+  },
+  {
+   "q": "tag:wip path:features/lifecycle.feature",
+   "category": "filtered",
+   "ranking": [
+    "features/lifecycle.feature#Legal hold blocks deletion"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,850 @@
+{
+ "config": "C",
+ "label": "C: Orama, Qwen3-Embedding 0.6B (Ollama)",
+ "status": "ok",
+ "date": "2026-11-22",
+ "machine": {
+  "description": "Apple Silicon desktop, 128 GB RAM",
+  "os": "darwin",
+  "arch": "arm64",
+  "cpus": 20,
+  "go_version": "go1.26.0",
+  "node_version": "v23.6.1"
+ },
+ "corpus": {
+  "documents": 11,
+  "entities": 88,
+  "chunks": 88,
+  "queries": 53
+ },
+ "embedder": {
+  "provider": "ollama",
+  "model": "qwen3-embedding:0.6b",
+  "dims": 1024
+ },
+ "search_mode": "orama hybrid (similarity 0, limit 10)",
+ "repeats": 20,
+ "warmup_passes": 1,
+ "latency_note": "wall time inside Node of query embedding via Ollama plus Orama search, per query; filtered queries are not run",
+ "metrics_unfiltered": {
+  "queries": 44,
+  "recall_at_5": 0.818182,
+  "mrr_at_10": 0.761995,
+  "exact_id_queries": 14,
+  "exact_id_accuracy_at_1": 0.928571,
+  "absent_violations": 0,
+  "per_category": {
+   "exact_id": {
+    "queries": 14,
+    "recall_at_5": 1,
+    "mrr_at_10": 0.964286,
+    "exact_id_queries": 14,
+    "exact_id_accuracy_at_1": 0.928571,
+    "absent_violations": 0
+   },
+   "keyword": {
+    "queries": 16,
+    "recall_at_5": 1,
+    "mrr_at_10": 0.953125,
+    "exact_id_queries": 0,
+    "exact_id_accuracy_at_1": 0,
+    "absent_violations": 0
+   },
+   "semantic": {
+    "queries": 14,
+    "recall_at_5": 0.428571,
+    "mrr_at_10": 0.34127,
+    "exact_id_queries": 0,
+    "exact_id_accuracy_at_1": 0,
+    "absent_violations": 0
+   }
+  }
+ },
+ "latency": {
+  "samples": 880,
+  "p50_ms": 46.823083,
+  "p95_ms": 83.46625
+ },
+ "mapping_recall": {
+  "found": 0,
+  "total": 0,
+  "recall": 0,
+  "note": "not applicable: the Orama harness stores no edges and has no trace"
+ },
+ "index": {
+  "size_bytes": 3172819,
+  "size_note": "byte length of JSON.stringify(save(db)) of the Orama index (not comparable to an SQLite file)",
+  "parse_seconds": 0.010117,
+  "embed_seconds": 1.803978,
+  "chunks_embedded": 88
+ },
+ "peak_rss_bytes": 123584512,
+ "peak_rss_note": "ru_maxrss of the Node process only (embedding, Orama index and all queries); the Go side that exports the chunks is not included",
+ "embedding_cost": {
+  "usd": 0,
+  "note": "local model, no per-token cost"
+ },
+ "per_query": [
+  {
+   "q": "BRD-006",
+   "category": "exact_id",
+   "ranking": [
+    "BRD-006",
+    "BRD-003",
+    "BRD-002",
+    "BRD-019",
+    "FDS-015",
+    "BRD-025",
+    "FDS-009",
+    "FDS-011",
+    "FDS-006",
+    "BRD-004"
+   ]
+  },
+  {
+   "q": "FDS-005",
+   "category": "exact_id",
+   "ranking": [
+    "FDS-005",
+    "FDS-003",
+    "FDS-009",
+    "FDS-015",
+    "FDS-001",
+    "FDS-006",
+    "FDS-007",
+    "FDS-011",
+    "FDS-002",
+    "FDS-014"
+   ]
+  },
+  {
+   "q": "single sign-on identity provider",
+   "category": "keyword",
+   "ranking": [
+    "BRD-011",
+    "FDS-007",
+    "AC-006",
+    "SCN-102",
+    "features/upload.feature#Upload a single document",
+    "features/access.feature",
+    "FDS-008",
+    "FDS-001",
+    "features/sharing.feature",
+    "FDS-006"
+   ]
+  },
+  {
+   "q": "fax",
+   "category": "keyword",
+   "ranking": [
+    "BRD-023",
+    "FDS-014",
+    "FDS-015",
+    "FDS-013",
+    "FDS-012",
+    "FDS-009",
+    "FDS-007",
+    "FDS-001",
+    "features/operations.feature",
+    "FDS-002"
+   ]
+  },
+  {
+   "q": "daily email digest",
+   "category": "keyword",
+   "ranking": [
+    "BRD-021",
+    "FDS-012",
+    "features/sharing.feature",
+    "features/operations.feature",
+    "features/search.feature",
+    "features/lifecycle.feature",
+    "features/lifecycle.feature#Retention expiry archives a document",
+    "features/search.feature#Filter results by status",
+    "BRD-006",
+    "FDS-015"
+   ]
+  },
+  {
+   "q": "resume interrupted upload",
+   "category": "keyword",
+   "ranking": [
+    "BRD-004",
+    "features/bulk_upload.feature#Resume an interrupted upload",
+    "AC-002",
+    "FDS-002",
+    "features/upload.feature",
+    "features/upload.feature#Show progress while a file uploads",
+    "FDS-001",
+    "features/upload.feature#Upload a single document",
+    "AC-001",
+    "BRD-002"
+   ]
+  },
+  {
+   "q": "status:deprecated",
+   "category": "filtered",
+   "skipped": "the Orama harness has no filter language (type:, status:, tag:, has:)",
+   "ranking": []
+  },
+  {
+   "q": "type:requirement -has:fds",
+   "category": "filtered",
+   "skipped": "the Orama harness has no filter language (type:, status:, tag:, has:)",
+   "ranking": []
+  },
+  {
+   "q": "legal hold -tag:wip",
+   "category": "filtered",
+   "skipped": "the Orama harness has no filter language (type:, status:, tag:, has:)",
+   "ranking": []
+  },
+  {
+   "q": "viewer cannot restore a version",
+   "category": "keyword",
+   "ranking": [
+    "features/versions.feature#Viewer cannot restore a version",
+    "AC-006",
+    "AC-007",
+    "AC-005",
+    "features/versions.feature",
+    "AC-010",
+    "AC-008",
+    "AC-002",
+    "features/versions.feature#Restoring creates a new version",
+    "AC-009"
+   ]
+  },
+  {
+   "q": "type:scenario retention",
+   "category": "filtered",
+   "skipped": "the Orama harness has no filter language (type:, status:, tag:, has:)",
+   "ranking": []
+  },
+  {
+   "q": "BRD-001",
+   "category": "exact_id",
+   "ranking": [
+    "BRD-001",
+    "BRD-006",
+    "BRD-003",
+    "BRD-002",
+    "BRD-019",
+    "FDS-015",
+    "BRD-025",
+    "FDS-011",
+    "FDS-009",
+    "BRD-004"
+   ]
+  },
+  {
+   "q": "BRD-017",
+   "category": "exact_id",
+   "ranking": [
+    "BRD-017",
+    "BRD-006",
+    "BRD-003",
+    "BRD-002",
+    "BRD-019",
+    "FDS-015",
+    "FDS-011",
+    "BRD-025",
+    "FDS-009",
+    "FDS-007"
+   ]
+  },
+  {
+   "q": "BRD-025",
+   "category": "exact_id",
+   "ranking": [
+    "BRD-025",
+    "BRD-006",
+    "BRD-002",
+    "BRD-003",
+    "FDS-015",
+    "BRD-019",
+    "FDS-011",
+    "BRD-023",
+    "FDS-009",
+    "FDS-001"
+   ]
+  },
+  {
+   "q": "FDS-011",
+   "category": "exact_id",
+   "ranking": [
+    "FDS-011",
+    "FDS-009",
+    "FDS-015",
+    "FDS-001",
+    "FDS-006",
+    "FDS-007",
+    "FDS-002",
+    "FDS-014",
+    "FDS-004",
+    "FDS-012"
+   ]
+  },
+  {
+   "q": "FDS-014",
+   "category": "exact_id",
+   "ranking": [
+    "FDS-014",
+    "FDS-015",
+    "FDS-009",
+    "FDS-001",
+    "FDS-006",
+    "FDS-007",
+    "FDS-011",
+    "FDS-002",
+    "FDS-013",
+    "FDS-004"
+   ]
+  },
+  {
+   "q": "AC-003",
+   "category": "exact_id",
+   "ranking": [
+    "AC-003",
+    "AC-010",
+    "FDS-015",
+    "BRD-006",
+    "FDS-009",
+    "features/access.feature",
+    "AC-005",
+    "FDS-011",
+    "AC-007",
+    "AC-002"
+   ]
+  },
+  {
+   "q": "AC-007",
+   "category": "exact_id",
+   "ranking": [
+    "AC-007",
+    "AC-003",
+    "FDS-015",
+    "AC-010",
+    "FDS-009",
+    "FDS-011",
+    "FDS-007",
+    "BRD-006",
+    "features/access.feature",
+    "AC-005"
+   ]
+  },
+  {
+   "q": "SCN-101",
+   "category": "exact_id",
+   "ranking": [
+    "SCN-101",
+    "FDS-011",
+    "FDS-015",
+    "FDS-009",
+    "BRD-006",
+    "AC-003",
+    "FDS-007",
+    "FDS-001",
+    "FDS-002",
+    "FDS-012"
+   ]
+  },
+  {
+   "q": "SCN-102",
+   "category": "exact_id",
+   "ranking": [
+    "SCN-102",
+    "FDS-011",
+    "FDS-015",
+    "FDS-009",
+    "BRD-006",
+    "FDS-012",
+    "FDS-007",
+    "FDS-002",
+    "FDS-001",
+    "AC-003"
+   ]
+  },
+  {
+   "q": "BRD-023",
+   "category": "exact_id",
+   "ranking": [
+    "BRD-023",
+    "BRD-006",
+    "BRD-002",
+    "BRD-003",
+    "BRD-025",
+    "BRD-019",
+    "FDS-011",
+    "FDS-015",
+    "FDS-009",
+    "FDS-001"
+   ]
+  },
+  {
+   "q": "FDS-002",
+   "category": "exact_id",
+   "ranking": [
+    "FDS-002",
+    "FDS-009",
+    "FDS-015",
+    "FDS-001",
+    "FDS-006",
+    "FDS-007",
+    "FDS-011",
+    "FDS-014",
+    "FDS-004",
+    "FDS-012"
+   ]
+  },
+  {
+   "q": "features/sharing.feature#Revoke a share link",
+   "category": "exact_id",
+   "ranking": [
+    "features/sharing.feature",
+    "features/sharing.feature#Revoke a share link",
+    "AC-008",
+    "features/sharing.feature#Disabled external sharing blocks new links",
+    "features/access.feature",
+    "AC-006",
+    "AC-010",
+    "features/sharing.feature#Create an expiring share link",
+    "AC-002",
+    "AC-004"
+   ]
+  },
+  {
+   "q": "legal hold",
+   "category": "keyword",
+   "ranking": [
+    "features/lifecycle.feature#Legal hold blocks deletion",
+    "features/lifecycle.feature",
+    "FDS-011",
+    "BRD-017",
+    "features/access.feature",
+    "features/search.feature#Search inside one folder",
+    "FDS-015",
+    "features/search.feature#Filter results by status",
+    "AC-003",
+    "BRD-006"
+   ]
+  },
+  {
+   "q": "audit log",
+   "category": "keyword",
+   "ranking": [
+    "BRD-015",
+    "features/lifecycle.feature#Legal hold blocks deletion",
+    "features/access.feature",
+    "features/lifecycle.feature#Retention expiry archives a document",
+    "features/lifecycle.feature",
+    "AC-003",
+    "FDS-008",
+    "features/operations.feature",
+    "features/versions.feature#List the versions of a document",
+    "features/lifecycle.feature#Retention report lists expiring documents"
+   ]
+  },
+  {
+   "q": "share link expiry date",
+   "category": "keyword",
+   "ranking": [
+    "BRD-013",
+    "features/sharing.feature",
+    "FDS-009",
+    "features/sharing.feature#Create an expiring share link",
+    "features/sharing.feature#Revoke a share link",
+    "AC-008",
+    "features/sharing.feature#Disabled external sharing blocks new links",
+    "features/sharing.feature#Share link opens a read-only preview",
+    "features/lifecycle.feature#Retention expiry archives a document",
+    "features/lifecycle.feature#Retention report lists expiring documents"
+   ]
+  },
+  {
+   "q": "WCAG",
+   "category": "keyword",
+   "ranking": [
+    "BRD-024",
+    "FDS-015",
+    "features/access.feature",
+    "AC-003",
+    "BRD-006",
+    "features/sharing.feature",
+    "features/lifecycle.feature",
+    "BRD-025",
+    "features/search.feature#Exact title wins over text matches",
+    "FDS-007"
+   ]
+  },
+  {
+   "q": "checksum file",
+   "category": "keyword",
+   "ranking": [
+    "AC-010",
+    "features/operations.feature#Export a folder as an archive",
+    "AC-002",
+    "BRD-004",
+    "BRD-023",
+    "features/upload.feature#Show progress while a file uploads",
+    "features/upload.feature#Reject unsupported file types",
+    "FDS-015",
+    "AC-001",
+    "FDS-013"
+   ]
+  },
+  {
+   "q": "retention period",
+   "category": "keyword",
+   "ranking": [
+    "BRD-016",
+    "features/lifecycle.feature",
+    "FDS-011",
+    "features/lifecycle.feature#Retention expiry archives a document",
+    "features/lifecycle.feature#Retention report lists expiring documents",
+    "AC-009",
+    "features/lifecycle.feature#Legal hold blocks deletion",
+    "AC-003",
+    "features/access.feature",
+    "FDS-013"
+   ]
+  },
+  {
+   "q": "role permission evaluator",
+   "category": "keyword",
+   "ranking": [
+    "FDS-008",
+    "BRD-012",
+    "features/access.feature#Admin assigns a role to a group",
+    "BRD-015",
+    "features/access.feature",
+    "FDS-015",
+    "features/lifecycle.feature",
+    "features/search.feature#Filter results by status",
+    "features/operations.feature",
+    "AC-004"
+   ]
+  },
+  {
+   "q": "offline",
+   "category": "keyword",
+   "ranking": [
+    "BRD-025",
+    "features/sharing.feature",
+    "features/access.feature",
+    "FDS-015",
+    "AC-003",
+    "BRD-014",
+    "features/lifecycle.feature",
+    "BRD-002",
+    "features/operations.feature",
+    "FDS-001"
+   ]
+  },
+  {
+   "q": "preview annotations highlights",
+   "category": "keyword",
+   "ranking": [
+    "BRD-019",
+    "features/operations.feature",
+    "features/operations.feature#Render a PDF preview",
+    "features/sharing.feature#Share link opens a read-only preview",
+    "FDS-010",
+    "features/sharing.feature",
+    "BRD-020",
+    "features/versions.feature#List the versions of a document",
+    "FDS-015",
+    "features/search.feature"
+   ]
+  },
+  {
+   "q": "retention report",
+   "category": "keyword",
+   "ranking": [
+    "features/lifecycle.feature#Retention report lists expiring documents",
+    "features/lifecycle.feature",
+    "FDS-011",
+    "features/lifecycle.feature#Retention expiry archives a document",
+    "AC-009",
+    "features/lifecycle.feature#Legal hold blocks deletion",
+    "BRD-016",
+    "features/bulk_upload.feature#Skip duplicates in a batch",
+    "features/search.feature#Filter results by status",
+    "features/operations.feature"
+   ]
+  },
+  {
+   "q": "warn session times out",
+   "category": "keyword",
+   "ranking": [
+    "features/access.feature#Warn before a session times out",
+    "FDS-011",
+    "features/versions.feature#List the versions of a document",
+    "features/access.feature",
+    "features/lifecycle.feature",
+    "BRD-014",
+    "features/lifecycle.feature#Retention expiry archives a document",
+    "AC-007",
+    "FDS-012",
+    "features/lifecycle.feature#Retention report lists expiring documents"
+   ]
+  },
+  {
+   "q": "people outside the company can look at a file until a deadline",
+   "category": "semantic",
+   "ranking": [
+    "AC-010",
+    "AC-006",
+    "AC-002",
+    "AC-009",
+    "AC-003",
+    "AC-008",
+    "AC-007",
+    "AC-001",
+    "AC-004",
+    "BRD-010"
+   ]
+  },
+  {
+   "q": "keep documents from being erased while a lawsuit is pending",
+   "category": "semantic",
+   "ranking": [
+    "AC-009",
+    "AC-003",
+    "AC-010",
+    "AC-004",
+    "AC-002",
+    "AC-006",
+    "AC-008",
+    "AC-005",
+    "AC-007",
+    "features/lifecycle.feature#Retention expiry archives a document"
+   ]
+  },
+  {
+   "q": "who did what is recorded for compliance",
+   "category": "semantic",
+   "ranking": [
+    "BRD-014",
+    "BRD-015",
+    "BRD-010",
+    "FDS-008",
+    "features/search.feature#Filter results by status",
+    "AC-003",
+    "AC-007",
+    "AC-009",
+    "BRD-023",
+    "features/search.feature#Exact title wins over text matches"
+   ]
+  },
+  {
+   "q": "log in once with company credentials",
+   "category": "semantic",
+   "ranking": [
+    "BRD-021",
+    "BRD-011",
+    "AC-006",
+    "SCN-102",
+    "BRD-004",
+    "features/bulk_upload.feature#Resume an interrupted upload",
+    "features/search.feature#Search inside one folder",
+    "BRD-002",
+    "BRD-015",
+    "AC-003"
+   ]
+  },
+  {
+   "q": "turn off sharing with outsiders for the whole organization",
+   "category": "semantic",
+   "ranking": [
+    "BRD-014",
+    "features/sharing.feature",
+    "features/sharing.feature#Disabled external sharing blocks new links",
+    "BRD-025",
+    "features/sharing.feature#Revoke a share link",
+    "features/sharing.feature#Share link opens a read-only preview",
+    "features/sharing.feature#Create an expiring share link",
+    "BRD-010",
+    "AC-003",
+    "features/lifecycle.feature#Retention expiry archives a document"
+   ]
+  },
+  {
+   "q": "work without an internet connection",
+   "category": "semantic",
+   "ranking": [
+    "BRD-025",
+    "BRD-014",
+    "AC-006",
+    "BRD-019",
+    "features/bulk_upload.feature#Resume an interrupted upload",
+    "BRD-004",
+    "AC-002",
+    "FDS-001",
+    "AC-008",
+    "FDS-011"
+   ]
+  },
+  {
+   "q": "get a message when a followed file is modified",
+   "category": "semantic",
+   "ranking": [
+    "AC-010",
+    "AC-002",
+    "AC-007",
+    "AC-009",
+    "AC-008",
+    "AC-005",
+    "AC-003",
+    "AC-006",
+    "AC-004",
+    "AC-001"
+   ]
+  },
+  {
+   "q": "pictures of pages shown in the browser",
+   "category": "semantic",
+   "ranking": [
+    "BRD-002",
+    "BRD-021",
+    "features/search.feature#Search inside one folder",
+    "features/versions.feature#List the versions of a document",
+    "features/operations.feature#Render a PDF preview",
+    "features/bulk_upload.feature#Upload a folder of documents",
+    "features/bulk_upload.feature#Resume an interrupted upload",
+    "AC-002",
+    "FDS-003",
+    "BRD-025"
+   ]
+  },
+  {
+   "q": "go back to an old revision",
+   "category": "semantic",
+   "ranking": [
+    "BRD-019",
+    "FDS-003",
+    "features/upload.feature#Reject an oversized file",
+    "features/bulk_upload.feature",
+    "features/lifecycle.feature#Retention expiry archives a document",
+    "FDS-013",
+    "FDS-005",
+    "FDS-006",
+    "BRD-009",
+    "FDS-010"
+   ]
+  },
+  {
+   "q": "files are removed automatically after a set time",
+   "category": "semantic",
+   "ranking": [
+    "AC-002",
+    "AC-009",
+    "AC-005",
+    "AC-010",
+    "AC-003",
+    "BRD-016",
+    "features/lifecycle.feature#Retention expiry archives a document",
+    "AC-008",
+    "AC-006",
+    "AC-001"
+   ]
+  },
+  {
+   "q": "screen reader and keyboard support",
+   "category": "semantic",
+   "ranking": [
+    "FDS-006",
+    "FDS-001",
+    "FDS-012",
+    "FDS-011",
+    "features/lifecycle.feature",
+    "features/operations.feature",
+    "BRD-019",
+    "BRD-006",
+    "FDS-008",
+    "AC-002"
+   ]
+  },
+  {
+   "q": "drag a whole directory to send many files",
+   "category": "semantic",
+   "ranking": [
+    "AC-002",
+    "AC-010",
+    "AC-009",
+    "AC-003",
+    "AC-001",
+    "AC-008",
+    "AC-005",
+    "AC-004",
+    "features/operations.feature#Export a folder as an archive",
+    "AC-006"
+   ]
+  },
+  {
+   "q": "take a folder with its history out of the portal",
+   "category": "semantic",
+   "ranking": [
+    "BRD-022",
+    "AC-003",
+    "AC-010",
+    "AC-002",
+    "AC-006",
+    "AC-004",
+    "AC-009",
+    "AC-005",
+    "features/operations.feature#Export a folder as an archive",
+    "AC-008"
+   ]
+  },
+  {
+   "q": "which component picks the strongest role for a user",
+   "category": "semantic",
+   "ranking": [
+    "AC-006",
+    "FDS-008",
+    "AC-005",
+    "AC-010",
+    "AC-007",
+    "AC-009",
+    "AC-003",
+    "AC-004",
+    "AC-002",
+    "AC-008"
+   ]
+  },
+  {
+   "q": "status:draft priority:P3",
+   "category": "filtered",
+   "skipped": "the Orama harness has no filter language (type:, status:, tag:, has:)",
+   "ranking": []
+  },
+  {
+   "q": "status:draft type:requirement upload",
+   "category": "filtered",
+   "skipped": "the Orama harness has no filter language (type:, status:, tag:, has:)",
+   "ranking": []
+  },
+  {
+   "q": "priority:P0 type:requirement search",
+   "category": "filtered",
+   "skipped": "the Orama harness has no filter language (type:, status:, tag:, has:)",
+   "ranking": []
+  },
+  {
+   "q": "type:design -has:scenario",
+   "category": "filtered",
+   "skipped": "the Orama harness has no filter language (type:, status:, tag:, has:)",
+   "ranking": []
+  },
+  {
+   "q": "tag:wip path:features/lifecycle.feature",
+   "category": "filtered",
+   "skipped": "the Orama harness has no filter language (type:, status:, tag:, has:)",
+   "ranking": []
+  }
+ ],
+ "notes": [
+  "orama 3.1.18; chunk texts embedded and queries embedded without any model prefix"
+ ]
+}

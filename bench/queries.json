@@ -1,0 +1,418 @@
+{
+ "queries": [
+  {
+   "q": "BRD-006",
+   "category": "exact_id",
+   "expect_top": [
+    "BRD-006"
+   ]
+  },
+  {
+   "q": "FDS-005",
+   "category": "exact_id",
+   "expect_top": [
+    "FDS-005"
+   ]
+  },
+  {
+   "q": "single sign-on identity provider",
+   "category": "keyword",
+   "expect_top": [
+    "BRD-011"
+   ],
+   "expect_absent": [
+    "BRD-023"
+   ]
+  },
+  {
+   "q": "fax",
+   "category": "keyword",
+   "expect_top": [
+    "BRD-023"
+   ],
+   "expect_absent": [
+    "BRD-001"
+   ]
+  },
+  {
+   "q": "daily email digest",
+   "category": "keyword",
+   "expect_top": [
+    "BRD-021"
+   ]
+  },
+  {
+   "q": "resume interrupted upload",
+   "category": "keyword",
+   "expect_top": [
+    "BRD-004"
+   ],
+   "expect_absent": [
+    "BRD-023"
+   ]
+  },
+  {
+   "q": "status:deprecated",
+   "category": "filtered",
+   "expect_top": [
+    "BRD-023"
+   ],
+   "expect_absent": [
+    "BRD-001",
+    "BRD-002"
+   ]
+  },
+  {
+   "q": "type:requirement -has:fds",
+   "category": "filtered",
+   "expect_top": [
+    "BRD-015",
+    "BRD-019",
+    "BRD-023"
+   ],
+   "expect_absent": [
+    "BRD-001",
+    "BRD-002"
+   ]
+  },
+  {
+   "q": "legal hold -tag:wip",
+   "category": "filtered",
+   "expect_top": [
+    "BRD-017"
+   ],
+   "expect_absent": [
+    "features/lifecycle.feature#Legal hold blocks deletion"
+   ]
+  },
+  {
+   "q": "viewer cannot restore a version",
+   "category": "keyword",
+   "expect_top": [
+    "features/versions.feature#Viewer cannot restore a version"
+   ]
+  },
+  {
+   "q": "type:scenario retention",
+   "category": "filtered",
+   "expect_top": [
+    "features/lifecycle.feature#Retention expiry archives a document"
+   ],
+   "expect_absent": [
+    "BRD-016"
+   ]
+  },
+  {
+   "q": "BRD-001",
+   "category": "exact_id",
+   "expect_top": [
+    "BRD-001"
+   ]
+  },
+  {
+   "q": "BRD-017",
+   "category": "exact_id",
+   "expect_top": [
+    "BRD-017"
+   ]
+  },
+  {
+   "q": "BRD-025",
+   "category": "exact_id",
+   "expect_top": [
+    "BRD-025"
+   ]
+  },
+  {
+   "q": "FDS-011",
+   "category": "exact_id",
+   "expect_top": [
+    "FDS-011"
+   ]
+  },
+  {
+   "q": "FDS-014",
+   "category": "exact_id",
+   "expect_top": [
+    "FDS-014"
+   ]
+  },
+  {
+   "q": "AC-003",
+   "category": "exact_id",
+   "expect_top": [
+    "AC-003"
+   ]
+  },
+  {
+   "q": "AC-007",
+   "category": "exact_id",
+   "expect_top": [
+    "AC-007"
+   ]
+  },
+  {
+   "q": "SCN-101",
+   "category": "exact_id",
+   "expect_top": [
+    "SCN-101"
+   ]
+  },
+  {
+   "q": "SCN-102",
+   "category": "exact_id",
+   "expect_top": [
+    "SCN-102"
+   ]
+  },
+  {
+   "q": "BRD-023",
+   "category": "exact_id",
+   "expect_top": [
+    "BRD-023"
+   ]
+  },
+  {
+   "q": "FDS-002",
+   "category": "exact_id",
+   "expect_top": [
+    "FDS-002"
+   ]
+  },
+  {
+   "q": "features/sharing.feature#Revoke a share link",
+   "category": "exact_id",
+   "expect_top": [
+    "features/sharing.feature#Revoke a share link"
+   ]
+  },
+  {
+   "q": "legal hold",
+   "category": "keyword",
+   "expect_top": [
+    "BRD-017"
+   ]
+  },
+  {
+   "q": "audit log",
+   "category": "keyword",
+   "expect_top": [
+    "BRD-015"
+   ]
+  },
+  {
+   "q": "share link expiry date",
+   "category": "keyword",
+   "expect_top": [
+    "BRD-013"
+   ]
+  },
+  {
+   "q": "WCAG",
+   "category": "keyword",
+   "expect_top": [
+    "BRD-024"
+   ]
+  },
+  {
+   "q": "checksum file",
+   "category": "keyword",
+   "expect_top": [
+    "AC-010"
+   ]
+  },
+  {
+   "q": "retention period",
+   "category": "keyword",
+   "expect_top": [
+    "BRD-016"
+   ]
+  },
+  {
+   "q": "role permission evaluator",
+   "category": "keyword",
+   "expect_top": [
+    "FDS-008"
+   ]
+  },
+  {
+   "q": "offline",
+   "category": "keyword",
+   "expect_top": [
+    "BRD-025"
+   ]
+  },
+  {
+   "q": "preview annotations highlights",
+   "category": "keyword",
+   "expect_top": [
+    "BRD-019"
+   ]
+  },
+  {
+   "q": "retention report",
+   "category": "keyword",
+   "expect_top": [
+    "features/lifecycle.feature#Retention report lists expiring documents"
+   ]
+  },
+  {
+   "q": "warn session times out",
+   "category": "keyword",
+   "expect_top": [
+    "features/access.feature#Warn before a session times out"
+   ]
+  },
+  {
+   "q": "people outside the company can look at a file until a deadline",
+   "category": "semantic",
+   "expect_top": [
+    "BRD-013"
+   ]
+  },
+  {
+   "q": "keep documents from being erased while a lawsuit is pending",
+   "category": "semantic",
+   "expect_top": [
+    "BRD-017"
+   ]
+  },
+  {
+   "q": "who did what is recorded for compliance",
+   "category": "semantic",
+   "expect_top": [
+    "BRD-015"
+   ]
+  },
+  {
+   "q": "log in once with company credentials",
+   "category": "semantic",
+   "expect_top": [
+    "BRD-011"
+   ]
+  },
+  {
+   "q": "turn off sharing with outsiders for the whole organization",
+   "category": "semantic",
+   "expect_top": [
+    "BRD-014"
+   ]
+  },
+  {
+   "q": "work without an internet connection",
+   "category": "semantic",
+   "expect_top": [
+    "BRD-025"
+   ]
+  },
+  {
+   "q": "get a message when a followed file is modified",
+   "category": "semantic",
+   "expect_top": [
+    "BRD-020"
+   ]
+  },
+  {
+   "q": "pictures of pages shown in the browser",
+   "category": "semantic",
+   "expect_top": [
+    "BRD-018"
+   ]
+  },
+  {
+   "q": "go back to an old revision",
+   "category": "semantic",
+   "expect_top": [
+    "BRD-009"
+   ]
+  },
+  {
+   "q": "files are removed automatically after a set time",
+   "category": "semantic",
+   "expect_top": [
+    "BRD-016"
+   ]
+  },
+  {
+   "q": "screen reader and keyboard support",
+   "category": "semantic",
+   "expect_top": [
+    "BRD-024"
+   ]
+  },
+  {
+   "q": "drag a whole directory to send many files",
+   "category": "semantic",
+   "expect_top": [
+    "BRD-003"
+   ]
+  },
+  {
+   "q": "take a folder with its history out of the portal",
+   "category": "semantic",
+   "expect_top": [
+    "BRD-022"
+   ]
+  },
+  {
+   "q": "which component picks the strongest role for a user",
+   "category": "semantic",
+   "expect_top": [
+    "FDS-008"
+   ]
+  },
+  {
+   "q": "status:draft priority:P3",
+   "category": "filtered",
+   "expect_top": [
+    "BRD-019"
+   ],
+   "expect_absent": [
+    "BRD-023",
+    "BRD-001"
+   ]
+  },
+  {
+   "q": "status:draft type:requirement upload",
+   "category": "filtered",
+   "expect_top": [
+    "BRD-004"
+   ],
+   "expect_absent": [
+    "BRD-002"
+   ]
+  },
+  {
+   "q": "priority:P0 type:requirement search",
+   "category": "filtered",
+   "expect_top": [
+    "BRD-005",
+    "BRD-006"
+   ],
+   "expect_absent": [
+    "BRD-007"
+   ]
+  },
+  {
+   "q": "type:design -has:scenario",
+   "category": "filtered",
+   "expect_top": [
+    "FDS-014",
+    "FDS-015"
+   ],
+   "expect_absent": [
+    "FDS-001"
+   ]
+  },
+  {
+   "q": "tag:wip path:features/lifecycle.feature",
+   "category": "filtered",
+   "expect_top": [
+    "features/lifecycle.feature#Legal hold blocks deletion"
+   ],
+   "expect_absent": [
+    "features/lifecycle.feature#Retention expiry archives a document"
+   ]
+  }
+ ]
+}
