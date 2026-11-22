@@ -1,0 +1,177 @@
+# specs-index reference
+
+Everything here was checked against the binary built from this repository (`specs-index --help`-style usage output and real runs against a copy of `testdata/corpus`).
+
+## Contents
+
+- [Commands](#commands)
+- [Search query grammar](#search-query-grammar)
+- [Index location and project root](#index-location-and-project-root)
+- [Configuration](#configuration)
+- [Environment variables](#environment-variables)
+- [MCP server](#mcp-server)
+- [Slash commands and skill](#slash-commands-and-skill)
+- [Scripts](#scripts)
+- [Exit codes](#exit-codes)
+
+## Commands
+
+```
+specs-index <command> [flags]     (every command except version takes --root DIR and --json)
+```
+
+| Command | What it does |
+| --- | --- |
+| `add PATH...` | Register files or directories (inside the project root) as sources. Does not index. |
+| `remove PATH...` | Unregister sources and drop the documents they alone covered. Files on disk are untouched. |
+| `sources` | List the registered sources. |
+| `index [--reembed] [--infer] [--allow-cloud] [--no-embed]` | Bring the index up to date. Incremental: unchanged files are skipped. |
+| `search QUERY [--mode auto\|exact\|fts\|vector\|hybrid] [--k 10]` | Search; see the grammar below. Use `--` before a query that starts with `-`. |
+| `show KEY` | One entity with its source lines and its direct incoming and outgoing links. An unknown key is an error. |
+| `trace KEY [--direction down\|up\|both] [--depth 5] [--kinds a,b] [--include-inferred]` | Follow links from an entity. |
+| `coverage` | Gaps and ID problems (below). |
+| `status` | Index counts, last index time, the configured embedder and the environment variables. |
+| `doctor [--allow-cloud]` | Check the index (integrity, FTS5, vector table) and the embedder; exits 1 on a failure. Never contacts a cloud embedder unless `--allow-cloud`. |
+| `config [init]` | Show the effective configuration, or write an example config file (never overwrites an existing one). |
+| `version` | Print the version (`-ldflags "-X main.version=..."` sets it at build time). |
+| `mcp` | Serve the tools over stdio; takes no arguments. See [MCP server](#mcp-server). |
+
+Common flags: `--root DIR` (project root), `--json` (print the result as JSON).
+
+### index
+
+- `--reembed`: discard every vector and embed all chunks again (after changing the model).
+- `--infer`: after embedding, store suggested `implements` / `verified_by` links. They are inferred (`explicit=0`) and never count as coverage.
+- `--allow-cloud`: allow a cloud embedding provider for this run.
+- `--no-embed`: index text only.
+
+The first lines report how many files were scanned, parsed, unchanged, removed or failed, then the entity and edge counts, then whether embedding happened (`no embedder configured; the index is text-only`).
+
+### trace
+
+Direction `down` (default) follows links away from the key (requirement to designs and scenarios), `up` follows them back, `both` does both. `--depth` is how many links to follow. `--kinds` is a comma-separated list; the default is `parent_of,implements,verified_by`, and exactly the listed kinds are followed. `--include-inferred` also follows inferred links. Output is an indented tree; each line shows how it was reached (`[via implements reversed]`), `[repeat]` for an entity already shown, and `file:line`.
+
+### coverage
+
+Reports, with source lines: requirements without an implementing design; designs without a verifying scenario or criterion; scenarios verifying nothing; dangling IDs (used as the target of a link but never defined); duplicate IDs; explicit conflicts (`Conflicts with`); and candidate conflicts from vector similarity (an empty list without embeddings). Only explicit links count.
+
+## Search query grammar
+
+Implemented in `internal/search/query.go`.
+
+| Part | Meaning |
+| --- | --- |
+| words | full-text terms, all required; `prefix*` matches a prefix; `AND`, `OR`, `NOT` are operators |
+| `"a phrase"` | phrase match |
+| `BRD-004` | a bare ID (`[A-Z][A-Z0-9]*-<digits>`): exact key lookup, exact hits come first |
+| `type:` | entity type: `requirement`, `design`, `acceptance`, `feature`, `scenario` |
+| `status:`, `priority:` | the value of the `Status` / `Priority` field (case-insensitive equality) |
+| `tag:` | a Gherkin tag without the `@`, for example `tag:smoke` |
+| `path:` | case-insensitive substring of the root-relative file path |
+| `-type:x`, `-status:x`, ... | negated filter |
+| `has:scenario`, `has:fds` | the entity has an explicit `verified_by` link to a scenario / an explicit `implements` link from a design |
+| `-has:scenario`, `-has:fds` | the entity has none |
+| `-word`, `-"phrase"` | exclude hits containing it |
+
+A query of filters only lists the matching entities (ordered by key). `has:` accepts only `scenario` and `fds`; any other value is an error. An unbalanced quote is an error.
+
+Modes (`--mode`, default `auto`):
+
+- `auto`: exact IDs first, then full text; with an embedder that has embedded the index it also merges in meaning (vector) results. If the embedder is down, a different model was used for the stored vectors, or nothing is embedded yet, it falls back to exact + full text and prints a notice.
+- `exact`: ID lookup only (filters apply).
+- `fts`: full text only.
+- `vector`, `hybrid`: need an embedder; without one they fail (`vector search needs an embedder, but no embedder is configured`).
+
+Each hit shows key, type, title, file and lines, status, and `(stale: ...)` when the file changed since it was indexed (run `index`). `--k` sets the number of hits (default 10). In JSON, hits carry `key`, `type`, `title`, `path`, `start_line`, `end_line`, `status`, `snippet`, `score`, `stale`, `source` (`exact`, `fts`, `vector` or `filter`), and the result has `query`, `mode` and `notes`.
+
+## Index location and project root
+
+- Root: `--root DIR`; else the nearest ancestor of the working directory that contains `.git`; else the working directory. (The MCP server uses `CLAUDE_PROJECT_DIR`, else the working directory, resolved the same way.)
+- Index: `<root>/.Wammy/specs.sqlite`; `SPECS_INDEX_DB` overrides the path.
+- Paths stored and printed are root-relative with forward slashes. `add` rejects a path outside the root.
+- `.Wammy/` is never indexed. In a git work tree `add` appends `.Wammy/` to `<gitdir>/info/exclude` (never `.gitignore`).
+- Files with the extensions `.md` and `.feature` are indexed; others are ignored.
+
+## Configuration
+
+`~/.config/specs-index/config.json`, merged over the defaults; environment variables override it. `specs-index config` prints the effective values; `specs-index config init` writes an example (it refuses to overwrite).
+
+```json
+{
+  "provider": {"embed": "ollama"},
+  "model": "embeddinggemma",
+  "base_url": "",
+  "allow_cloud": false
+}
+```
+
+Fields: `provider.embed` (`ollama`, `openai`, `bedrock` or `none`; default `ollama`), `model` (default `embeddinggemma`, only for Ollama), `base_url`, `allow_cloud`, and the optional `dims` (vector size override), `api_key_env` (the name of the variable holding an OpenAI-compatible API key; the key is never stored), `region` and `profile` (AWS region and shared-config profile for Bedrock). An unknown provider or a malformed file is an error.
+
+A non-local provider is contacted only when `allow_cloud` is true (or `SPECS_INDEX_ALLOW_CLOUD=true`, or `--allow-cloud` on `index` / `doctor`). Without any embedder, everything except vector and hybrid search works.
+
+## Environment variables
+
+From `config.EnvVars()`:
+
+| Variable | Meaning |
+| --- | --- |
+| `SPECS_INDEX_EMBED_PROVIDER` | embedding provider: `ollama`, `openai`, `bedrock` or `none` (default `ollama`) |
+| `SPECS_INDEX_EMBED_MODEL` | embedding model name (default `embeddinggemma` for Ollama) |
+| `SPECS_INDEX_EMBED_BASE_URL` | base URL of the Ollama or OpenAI-compatible server |
+| `SPECS_INDEX_EMBED_API_KEY_ENV` | name of the variable holding the OpenAI-compatible API key |
+| `SPECS_INDEX_EMBED_REGION` | AWS region for the `bedrock` provider |
+| `SPECS_INDEX_EMBED_PROFILE` | AWS shared-config profile for the `bedrock` provider |
+| `SPECS_INDEX_EMBED_DIMS` | vector size override, a positive integer |
+| `SPECS_INDEX_ALLOW_CLOUD` | `true` allows non-local embedding providers (same as `--allow-cloud`) |
+| `SPECS_INDEX_DB` | path of the index database |
+
+`CLAUDE_PROJECT_DIR` is read by `specs-index mcp` only.
+
+## MCP server
+
+`specs-index mcp` speaks newline-delimited JSON-RPC 2.0 over stdio and implements the `initialize` handshake revisions 2024-11-05 through 2025-11-25 and the stateless 2026-07-28 revision. stdout carries protocol messages only. The project root is fixed at start; tool arguments cannot change it.
+
+| Tool | Arguments | Read-only |
+| --- | --- | --- |
+| `add_source` | `path` (required) | no |
+| `remove_source` | `path` (required) | no |
+| `index` | `reembed` (boolean) | no |
+| `search` | `query` (required), `mode` (`auto`, `exact`, `fts`, `vector`, `hybrid`), `k` (1 to 100, default 10) | yes |
+| `show` | `key` (required) | yes |
+| `trace` | `key` (required), `direction`, `depth` (1 to 50), `kinds` (array), `include_inferred` | yes |
+| `coverage` | none | yes |
+| `status` | none | yes |
+
+`index` has no cloud option: a request for `allow_cloud` is refused as an unknown argument. Results are the same JSON as the CLI's `--json`, as text content; failures are results with `isError` set.
+
+Plugin start line (`.mcp.json`): `sh "${CLAUDE_PLUGIN_ROOT}/bin/specs-index" mcp`.
+
+## Slash commands and skill
+
+Plugin name `specs-index`; each command runs `sh "${CLAUDE_PLUGIN_ROOT}/bin/specs-index" <command> $ARGUMENTS` and shows the output.
+
+| Command | Runs |
+| --- | --- |
+| `/specs-index:add PATH...` | `add` |
+| `/specs-index:index [flags]` | `index` |
+| `/specs-index:search QUERY [flags]` | `search` |
+| `/specs-index:trace KEY [flags]` | `trace` |
+| `/specs-index:coverage` | `coverage` |
+| `/specs-index:status` | `status` |
+
+Commands run in Claude Code's working directory, so the project root is found as for the CLI. The `specs-search` skill (`skills/specs-search/SKILL.md`) tells Claude when to use search, trace or coverage, the query grammar, to run `index` when results are marked stale, and that source files are never edited.
+
+## Scripts
+
+| Script | Purpose |
+| --- | --- |
+| `scripts/plugin-launcher.sh` | Becomes `bin/specs-index` in the plugin: runs the bundled binary for this OS and CPU, else `specs-index` from `PATH`, else exits 127. |
+| `scripts/build-plugin.sh OUT [VERSION]` | Cross-builds the six binaries (darwin, linux, windows on amd64 and arm64, `CGO_ENABLED=0`) and stages the plugin tree into OUT. |
+| `scripts/check-plugin.sh OUT [VERSION_TEXT]` | Checks a staged tree: six binaries over 5 MB, launcher, executable bits, six command files, the skill, `plugin.json` without `version`, `.mcp.json` pointing at the launcher, tree under 120 MB, launcher exits 127 with no binary, `version` runs. Prints `check-plugin: ok (...)`. |
+| `scripts/build-release.sh [VERSION]` | Release archives and `checksums.txt` into `dist/`. |
+| `scripts/install.sh [--binary FILE] [--bin-dir DIR]` | Install the binary (macOS, Linux) and write a starter config if none exists. |
+| `scripts/mcp-smoke.js PLUGIN_DIR PROJECT_DIR` | Start the server through `sh` and the launcher; run `initialize`, `tools/list`, `tools/call status` (needs Node). |
+
+## Exit codes
+
+`0` success; `1` failure (including a failed `doctor` check, an unknown key, a path outside the root); `2` usage error.

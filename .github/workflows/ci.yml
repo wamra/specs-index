@@ -1,0 +1,115 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # macOS is left out on purpose: it is the development platform and its
+  # hosted runners cost about ten times the Linux rate in a private repo.
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - run: go vet ./...
+      - run: go test ./...
+
+  # Proves that an MCP client can start the server the way .mcp.json does on Windows:
+  # `sh` (Git for Windows) running the launcher, which picks the windows binary.
+  mcp-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - name: Stage a one-binary plugin tree
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/plugin/bin" "$RUNNER_TEMP/project/docs"
+          CGO_ENABLED=0 go build -o "$RUNNER_TEMP/plugin/bin/specs-index-windows-amd64.exe" ./cmd/specs-index
+          cp scripts/plugin-launcher.sh "$RUNNER_TEMP/plugin/bin/specs-index"
+          cp testdata/corpus/docs/*.md "$RUNNER_TEMP/project/docs/"
+          cd "$RUNNER_TEMP/project"
+          SPECS_INDEX_EMBED_PROVIDER=none "$RUNNER_TEMP/plugin/bin/specs-index-windows-amd64.exe" add docs --root .
+          SPECS_INDEX_EMBED_PROVIDER=none "$RUNNER_TEMP/plugin/bin/specs-index-windows-amd64.exe" index --root .
+      - name: Start specs-index mcp through sh and the launcher, send initialize
+        shell: pwsh
+        env:
+          SPECS_INDEX_EMBED_PROVIDER: none
+        run: node scripts/mcp-smoke.js "$env:RUNNER_TEMP/plugin" "$env:RUNNER_TEMP/project"
+
+  # Cross-builds the six release archives and keeps them for a week.
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - run: scripts/build-release.sh
+      - uses: actions/upload-artifact@v7
+        with:
+          name: specs-index-dist
+          path: dist/
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+      - name: Stage and check the plugin tree
+        run: |
+          scripts/build-plugin.sh "$RUNNER_TEMP/plugin"
+          scripts/check-plugin.sh "$RUNNER_TEMP/plugin"
+      - name: Start the MCP server from the staged tree
+        run: |
+          mkdir -p "$RUNNER_TEMP/project"
+          cp -R testdata/corpus/docs testdata/corpus/features "$RUNNER_TEMP/project/"
+          cd "$RUNNER_TEMP/project"
+          export SPECS_INDEX_EMBED_PROVIDER=none
+          "$RUNNER_TEMP/plugin/bin/specs-index" add docs features --root .
+          "$RUNNER_TEMP/plugin/bin/specs-index" index --root .
+          cd "$GITHUB_WORKSPACE"
+          node scripts/mcp-smoke.js "$RUNNER_TEMP/plugin" "$RUNNER_TEMP/project"
+
+  # Builds the installable plugin (launcher plus the six binaries), checks it, and
+  # force-pushes it as the orphan "plugin" branch, which the marketplace entry
+  # installs from. One commit, so history stays small. Only for pushes to main.
+  plugin:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [test, mcp-windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - name: Build and check the plugin tree
+        run: |
+          scripts/build-plugin.sh "$RUNNER_TEMP/plugin" "${GITHUB_SHA::7}"
+          scripts/check-plugin.sh "$RUNNER_TEMP/plugin" "${GITHUB_SHA::7}"
+      - name: Push the plugin branch
+        working-directory: ${{ runner.temp }}/plugin
+        run: |
+          git init -q -b plugin
+          git config user.name "wamra"
+          git config user.email "wamra@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Plugin build of ${GITHUB_SHA::7}"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" plugin

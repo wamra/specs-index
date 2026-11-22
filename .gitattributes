@@ -1,0 +1,2 @@
+# Keep text files LF on every platform: sh runs the launcher on Windows, and fixtures are hashed.
+* text=auto eol=lf
