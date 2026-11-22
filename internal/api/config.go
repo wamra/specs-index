@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -30,8 +31,10 @@ type ConfigResult struct {
 }
 
 // EnvVarInfo is one environment variable the tool reads (from
-// config.EnvVars). Value is the current value, which none of them keeps secret
-// (the API key variable holds a variable's name, never a key).
+// config.EnvVars). Value is the current value as shown to the user: the API
+// key variable holds a variable's name, never a key; a base URL is shown with
+// any password redacted (RedactURL); SPECS_INDEX_DB is shown through
+// DisplayPath, like the db field of status.
 type EnvVarInfo struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
@@ -39,15 +42,38 @@ type EnvVarInfo struct {
 	Value       string `json:"value"`
 }
 
-// EnvInfo lists the supported environment variables with their current values.
-func EnvInfo() []EnvVarInfo {
+// EnvInfo lists the supported environment variables with their current
+// values, displayed for root (see EnvVarInfo).
+func EnvInfo(root string) []EnvVarInfo {
 	vars := config.EnvVars()
 	out := make([]EnvVarInfo, 0, len(vars))
 	for _, v := range vars {
 		val, set := os.LookupEnv(v.Name)
+		if val != "" {
+			switch {
+			case v.Name == "SPECS_INDEX_DB":
+				val = DisplayPath(root, val)
+			case strings.HasSuffix(v.Name, "_BASE_URL"):
+				val = RedactURL(val)
+			}
+		}
 		out = append(out, EnvVarInfo{Name: v.Name, Description: v.Description, Set: set && val != "", Value: val})
 	}
 	return out
+}
+
+// RedactURL returns raw with any password in its user info replaced by "xxxxx"
+// (url.URL.Redacted), "(unparseable URL)" when it cannot be parsed, and "" for
+// "".
+func RedactURL(raw string) string {
+	if raw == "" {
+		return ""
+	}
+	u, err := url.Parse(raw)
+	if err != nil {
+		return "(unparseable URL)"
+	}
+	return u.Redacted()
 }
 
 func tildePath(p string) string {
@@ -60,8 +86,9 @@ func tildePath(p string) string {
 }
 
 // Config returns the effective configuration (defaults, then the config file,
-// then the environment, as resolved by internal/config).
-func Config(cfg config.Config) (ConfigResult, error) {
+// then the environment, as resolved by internal/config). root is used only to
+// display SPECS_INDEX_DB.
+func Config(cfg config.Config, root string) (ConfigResult, error) {
 	p, err := config.Path()
 	if err != nil {
 		return ConfigResult{}, err
@@ -69,13 +96,13 @@ func Config(cfg config.Config) (ConfigResult, error) {
 	_, statErr := os.Stat(p)
 	r := ConfigResult{
 		File: tildePath(p), FileExists: statErr == nil,
-		Provider: cfg.Provider.Embed, Model: cfg.Model, BaseURL: cfg.BaseURL, AllowCloud: cfg.AllowCloud,
+		Provider: cfg.Provider.Embed, Model: cfg.Model, BaseURL: RedactURL(cfg.BaseURL), AllowCloud: cfg.AllowCloud,
 		Dims: cfg.Dims, APIKeyEnv: cfg.APIKeyEnv, Region: cfg.Region, Profile: cfg.Profile,
 	}
 	if cfg.APIKeyEnv != "" {
 		r.APIKeySet = os.Getenv(cfg.APIKeyEnv) != ""
 	}
-	r.Environment = EnvInfo()
+	r.Environment = EnvInfo(root)
 	return r, nil
 }
 

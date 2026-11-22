@@ -692,3 +692,16 @@ func TestAnnotationsFollowTheNegotiatedRevision(t *testing.T) {
 		}
 	}
 }
+
+func TestStatusRedactsURLCredentialsAndDBPath(t *testing.T) {
+	root := newRoot(t)
+	indexed(t, root)
+	t.Setenv("SPECS_INDEX_EMBED_BASE_URL", "http://user:s3cr3tpw@127.0.0.1:1")
+	text := result(t, byID(t, serve(t, root, call(1, "status", "")), "1")).Content[0].Text
+	if strings.Contains(text, "s3cr3tpw") {
+		t.Errorf("status handed the URL password to the model:\n%s", text)
+	}
+	if db := os.Getenv("SPECS_INDEX_DB"); strings.Contains(text, db) {
+		t.Errorf("status exposed the absolute SPECS_INDEX_DB value:\n%s", text)
+	}
+}

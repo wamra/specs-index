@@ -32,7 +32,11 @@ func cmdConfig(args []string, out, errw io.Writer) int {
 	if err != nil {
 		return fail(errw, err)
 	}
-	r, err := api.Config(cfg)
+	root, err := c.resolveRoot()
+	if err != nil {
+		return fail(errw, err)
+	}
+	r, err := api.Config(cfg, root)
 	if err != nil {
 		return fail(errw, err)
 	}

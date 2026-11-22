@@ -225,3 +225,12 @@ func listed(names []string, model string) bool {
 	}
 	return false
 }
+
+// redactURL hides any password in raw, for messages.
+func redactURL(raw string) string {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return "(unparseable URL)"
+	}
+	return u.Redacted()
+}

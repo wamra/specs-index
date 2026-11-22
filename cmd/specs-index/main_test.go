@@ -715,3 +715,22 @@ func TestShowScenarioAndStaleness(t *testing.T) {
 	}
 	contains(t, mustOK(t, "search", "--root", root, "interrupted", "type:scenario"), "stale")
 }
+
+func TestStatusAndConfigRedactURLCredentialsAndDBPath(t *testing.T) {
+	root := indexed(t)
+	dbAbs := os.Getenv("SPECS_INDEX_DB")
+	t.Setenv("SPECS_INDEX_EMBED_BASE_URL", "http://user:s3cr3tpw@127.0.0.1:1")
+	for _, args := range [][]string{{"status"}, {"status", "--json"}, {"config"}, {"config", "--json"}} {
+		code, out, errw := cli(t, append(args, "--root", root)...)
+		if code != 0 {
+			t.Fatalf("%v: exit %d: %s", args, code, errw)
+		}
+		if strings.Contains(out+errw, "s3cr3tpw") {
+			t.Errorf("%v printed the URL password:\n%s", args, out)
+		}
+		if strings.Contains(out+errw, dbAbs) {
+			t.Errorf("%v printed the absolute SPECS_INDEX_DB value:\n%s", args, out)
+		}
+		contains(t, out, "127.0.0.1:1")
+	}
+}

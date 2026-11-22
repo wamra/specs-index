@@ -125,6 +125,8 @@ From `config.EnvVars()`:
 | `SPECS_INDEX_ALLOW_CLOUD` | `true` allows non-local embedding providers (same as `--allow-cloud`) |
 | `SPECS_INDEX_DB` | path of the index database |
 
+`status` and `config` (and the MCP `status` tool) list these variables with their current values. A base URL is shown with any password replaced by `xxxxx`; `SPECS_INDEX_DB` is shown root-relative, or as `(outside project)`, like the `db` field of `status`. The `base_url` field of `status` and `config` is redacted the same way.
+
 `CLAUDE_PROJECT_DIR` is read by `specs-index mcp` only.
 
 ## MCP server

@@ -50,7 +50,7 @@ type StatusResult struct {
 
 func embedderInfo(cfg config.Config, allowCloud bool) EmbedderInfo {
 	info := EmbedderInfo{
-		Provider: cfg.Provider.Embed, Model: cfg.Model, BaseURL: cfg.BaseURL,
+		Provider: cfg.Provider.Embed, Model: cfg.Model, BaseURL: RedactURL(cfg.BaseURL),
 		APIKeyEnv: cfg.APIKeyEnv, CloudAllow: allowCloud || cfg.AllowCloud,
 	}
 	if cfg.APIKeyEnv != "" {
@@ -120,7 +120,7 @@ func Status(ctx context.Context, st *store.Store, root string, cfg config.Config
 	if r.Embedder.Fingerprint, r.Embedder.Dims, err = embed.Stored(ctx, st); err != nil {
 		return r, err
 	}
-	r.Environment = EnvInfo()
+	r.Environment = EnvInfo(root)
 	return r, nil
 }
 

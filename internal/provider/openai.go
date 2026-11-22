@@ -138,7 +138,7 @@ func openAIHealth(ctx context.Context, hc *http.Client, base, keyEnv, model stri
 		names = append(names, m.ID)
 	}
 	if !listed(names, model) {
-		return fmt.Errorf("model %s not listed at %s", model, base)
+		return fmt.Errorf("model %s not listed at %s", model, redactURL(base))
 	}
 	return nil
 }
