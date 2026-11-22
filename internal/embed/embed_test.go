@@ -69,7 +69,7 @@ func workspace(t *testing.T) (string, *store.Store) {
 
 func index(t *testing.T, st *store.Store, root string) {
 	t.Helper()
-	rep, err := indexer.Run(context.Background(), st, root)
+	rep, err := indexer.Run(context.Background(), st, root, nil)
 	if err != nil || rep.Failed != 0 {
 		t.Fatalf("index: %v %+v", err, rep)
 	}

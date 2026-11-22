@@ -69,7 +69,7 @@ func openStore(t *testing.T, root string) *store.Store {
 
 func runIdx(t *testing.T, st *store.Store, root string) Report {
 	t.Helper()
-	rep, err := Run(context.Background(), st, root)
+	rep, err := Run(context.Background(), st, root, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -599,7 +599,7 @@ func interrupted(t *testing.T, st *store.Store, root string) {
 	defer cancel()
 	afterDoc = cancel
 	defer func() { afterDoc = nil }()
-	if _, err := Run(ctx, st, root); err == nil {
+	if _, err := Run(ctx, st, root, nil); err == nil {
 		t.Fatal("expected the interrupted run to fail")
 	}
 }
@@ -756,4 +756,60 @@ func TestInferredEdgesToVanishedEntitiesAreDropped(t *testing.T) {
 	if n := count(t, st, `SELECT count(*) FROM edges WHERE explicit = 0 AND src_key = 'FDS-002'`); n != 1 {
 		t.Errorf("inferred edge between live entities dropped (%d)", n)
 	}
+}
+
+func TestTypesMappingAppliesAndChangesReparse(t *testing.T) {
+	root := evalDir(t, t.TempDir())
+	write(t, filepath.Join(root, "a.md"), "## ZZ-001 Thing\n\n## QQ-001 Other\n")
+	st := openStore(t, root)
+	AddSource(st, root, ".")
+	typeOf := func(key string) string {
+		var typ string
+		st.DB().QueryRow(`SELECT type FROM entities WHERE key = ?`, key).Scan(&typ)
+		return typ
+	}
+	if _, err := Run(context.Background(), st, root, map[string]string{"ZZ": "design"}); err != nil {
+		t.Fatal(err)
+	}
+	if typeOf("ZZ-001") != "design" || typeOf("QQ-001") != "requirement" {
+		t.Fatalf("first run: ZZ %q QQ %q", typeOf("ZZ-001"), typeOf("QQ-001"))
+	}
+	// unchanged file, changed mapping: the file is parsed again
+	rep, err := Run(context.Background(), st, root, map[string]string{"ZZ": "acceptance"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rep.Parsed != 1 || typeOf("ZZ-001") != "acceptance" {
+		t.Fatalf("after mapping change: parsed %d, ZZ %q", rep.Parsed, typeOf("ZZ-001"))
+	}
+	// same mapping again: nothing to do
+	if rep := runTypes(t, st, root, map[string]string{"ZZ": "acceptance"}); rep.Parsed != 0 {
+		t.Fatalf("same mapping: parsed %d", rep.Parsed)
+	}
+	// a prune-only run (remove) that promotes a duplicate re-parses it with
+	// the stored mapping
+	write(t, filepath.Join(root, "b.md"), "## ZZ-001 Dup\n")
+	if err := RemoveSource(st, root, "."); err != nil {
+		t.Fatal(err)
+	}
+	AddSource(st, root, "a.md")
+	AddSource(st, root, "b.md")
+	runTypes(t, st, root, map[string]string{"ZZ": "acceptance"})
+	if err := RemoveSource(st, root, "a.md"); err != nil {
+		t.Fatal(err)
+	}
+	var owner string
+	st.DB().QueryRow(`SELECT d.path FROM entities e JOIN documents d ON d.id = e.doc_id WHERE e.key = 'ZZ-001'`).Scan(&owner)
+	if owner != "b.md" || typeOf("ZZ-001") != "acceptance" {
+		t.Fatalf("after remove: owner %q, ZZ %q", owner, typeOf("ZZ-001"))
+	}
+}
+
+func runTypes(t *testing.T, st *store.Store, root string, types map[string]string) Report {
+	t.Helper()
+	rep, err := Run(context.Background(), st, root, types)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return rep
 }

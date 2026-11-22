@@ -10,24 +10,28 @@ import (
 	"strings"
 
 	"github.com/wamra/specs-index/internal/config"
+	"github.com/wamra/specs-index/internal/markdown"
 )
 
-// ConfigResult is the effective embedding configuration. File is the config
+// ConfigResult is the effective configuration. Types is the Markdown ID
+// prefix mapping in effect (the defaults with the configured types merged
+// over them). File is the config
 // file path with the home directory shown as "~". APIKeySet says only whether
 // the variable named by APIKeyEnv has a value; the value is never exposed.
 type ConfigResult struct {
-	File        string       `json:"file"`
-	FileExists  bool         `json:"file_exists"`
-	Provider    string       `json:"provider"`
-	Model       string       `json:"model"`
-	BaseURL     string       `json:"base_url"`
-	AllowCloud  bool         `json:"allow_cloud"`
-	Dims        int          `json:"dims"`
-	APIKeyEnv   string       `json:"api_key_env"`
-	APIKeySet   bool         `json:"api_key_set"`
-	Region      string       `json:"region"`
-	Profile     string       `json:"profile"`
-	Environment []EnvVarInfo `json:"environment"`
+	File        string            `json:"file"`
+	FileExists  bool              `json:"file_exists"`
+	Provider    string            `json:"provider"`
+	Model       string            `json:"model"`
+	BaseURL     string            `json:"base_url"`
+	AllowCloud  bool              `json:"allow_cloud"`
+	Dims        int               `json:"dims"`
+	APIKeyEnv   string            `json:"api_key_env"`
+	APIKeySet   bool              `json:"api_key_set"`
+	Region      string            `json:"region"`
+	Profile     string            `json:"profile"`
+	Types       map[string]string `json:"types"`
+	Environment []EnvVarInfo      `json:"environment"`
 }
 
 // EnvVarInfo is one environment variable the tool reads (from
@@ -98,6 +102,7 @@ func Config(cfg config.Config, root string) (ConfigResult, error) {
 		File: tildePath(p), FileExists: statErr == nil,
 		Provider: cfg.Provider.Embed, Model: cfg.Model, BaseURL: RedactURL(cfg.BaseURL), AllowCloud: cfg.AllowCloud,
 		Dims: cfg.Dims, APIKeyEnv: cfg.APIKeyEnv, Region: cfg.Region, Profile: cfg.Profile,
+		Types: markdown.MergeTypes(cfg.Types),
 	}
 	if cfg.APIKeyEnv != "" {
 		r.APIKeySet = os.Getenv(cfg.APIKeyEnv) != ""
@@ -153,6 +158,8 @@ func exampleConfig() string {
 		{"_comment_base_url", "Endpoint override. A host other than this machine counts as cloud."},
 		{"allow_cloud", false},
 		{"_comment_allow_cloud", "Must be true (or pass --allow-cloud) before document text is sent to a cloud provider."},
+		{"types", map[string]string{}},
+		{"_comment_types", "Markdown ID prefix to entity type (requirement, design or acceptance), merged over BRD=requirement, FDS=design, AC=acceptance; any other prefix is a requirement. Example: {\"SRS\": \"requirement\", \"SDD\": \"design\"}."},
 	}
 	var b strings.Builder
 	b.WriteString("{\n")

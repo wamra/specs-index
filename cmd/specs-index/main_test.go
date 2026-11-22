@@ -584,7 +584,7 @@ func TestStatusAndConfigJSONKeys(t *testing.T) {
 		"edges_explicit", "edges_inferred", "chunks", "embedded_chunks", "indexed_at", "embedder", "environment")
 	requireKeys(t, "config", jsonKeys(t, "config", "--root", root, "--json"),
 		"file", "file_exists", "provider", "model", "base_url", "allow_cloud", "dims", "api_key_env", "api_key_set",
-		"region", "profile", "environment")
+		"region", "profile", "types", "environment")
 	var emb map[string]json.RawMessage
 	json.Unmarshal(jsonKeys(t, "status", "--root", root, "--json")["embedder"], &emb)
 	requireKeys(t, "status.embedder", emb, "provider", "model", "base_url", "cloud", "cloud_allowed", "api_key_env",
@@ -761,5 +761,29 @@ func TestIndexAfterModelChangeReportsMismatchNotFailure(t *testing.T) {
 	// explicit vector search still refuses
 	if code, _, errw := cli(t, "search", "--root", root, "--mode", "vector", "upload"); code != 1 || !strings.Contains(errw, "index --reembed") {
 		t.Errorf("vector after mismatch: exit %d %s", code, errw)
+	}
+}
+
+func TestConfiguredTypesApplyToIndex(t *testing.T) {
+	root := newWorkspace(t)
+	home, _ := os.UserHomeDir()
+	os.WriteFile(filepath.Join(root, "docs", "zz.md"), []byte("## ZZ-001 Custom prefix\n\n## QQ-001 Unmapped prefix\n"), 0o644)
+	mustOK(t, "add", "--root", root, filepath.Join(root, "docs"))
+	mustOK(t, "index", "--root", root)
+	contains(t, mustOK(t, "show", "--root", root, "ZZ-001"), "requirement")
+	writeConfig(t, home, `{"provider":{"embed":"none"},"types":{"ZZ":"design"}}`)
+	out := mustOK(t, "index", "--root", root)
+	contains(t, out, "4 parsed") // every Markdown file again: the mapping changed
+	contains(t, mustOK(t, "show", "--root", root, "ZZ-001"), "design")
+	contains(t, mustOK(t, "show", "--root", root, "QQ-001"), "requirement")
+	contains(t, mustOK(t, "config", "--root", root), "ZZ=design", "BRD=requirement")
+	var cr api.ConfigResult
+	json.Unmarshal([]byte(mustOK(t, "config", "--root", root, "--json")), &cr)
+	if cr.Types["ZZ"] != "design" || cr.Types["FDS"] != "design" {
+		t.Errorf("config --json types = %+v", cr.Types)
+	}
+	writeConfig(t, home, `{"provider":{"embed":"none"},"types":{"ZZ":"bogus"}}`)
+	if code, _, errw := cli(t, "index", "--root", root); code != 1 || !strings.Contains(errw, "types") {
+		t.Errorf("bad type: exit %d %s", code, errw)
 	}
 }

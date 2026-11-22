@@ -54,7 +54,7 @@ func indexedCorpus(t *testing.T) *store.Store {
 			t.Fatal(err)
 		}
 	}
-	rep, err := indexer.Run(context.Background(), st, root)
+	rep, err := indexer.Run(context.Background(), st, root, nil)
 	if err != nil || rep.Failed != 0 {
 		t.Fatalf("index: %v %+v", err, rep)
 	}

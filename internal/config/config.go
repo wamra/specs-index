@@ -1,5 +1,6 @@
-// Package config loads the embedding settings: defaults, then
+// Package config loads the settings: defaults, then
 // ~/.config/specs-index/config.json, then SPECS_INDEX_* environment variables.
+// The ID prefix types are read from the file only.
 package config
 
 import (
@@ -9,6 +10,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -20,6 +22,15 @@ const (
 	OpenAI  = "openai"
 	Bedrock = "bedrock"
 )
+
+// Entity types a Types entry may name.
+const (
+	TypeRequirement = "requirement"
+	TypeDesign      = "design"
+	TypeAcceptance  = "acceptance"
+)
+
+var prefixRe = regexp.MustCompile(`^[A-Z][A-Z0-9]*$`)
 
 // Defaults.
 const (
@@ -47,6 +58,11 @@ type Config struct {
 	APIKeyEnv string `json:"api_key_env,omitempty"`
 	Region    string `json:"region,omitempty"`
 	Profile   string `json:"profile,omitempty"`
+	// Types maps a Markdown ID prefix (BRD in BRD-004) to an entity type:
+	// requirement, design or acceptance. It is merged over the defaults
+	// BRD=requirement, FDS=design, AC=acceptance; a prefix with no mapping
+	// is a requirement.
+	Types map[string]string `json:"types,omitempty"`
 }
 
 // EnvVar describes one environment variable the tools read.
@@ -123,6 +139,18 @@ func Load() (Config, error) {
 	if c.Model == "" && c.Provider.Embed == Ollama {
 		c.Model = DefaultModel // only Ollama has a default model
 	}
+	for k, v := range c.Types {
+		if !prefixRe.MatchString(k) {
+			return c, fmt.Errorf("types: prefix %q: want upper-case letters and digits starting with a letter, as in BRD", k)
+		}
+		v = strings.ToLower(strings.TrimSpace(v))
+		switch v {
+		case TypeRequirement, TypeDesign, TypeAcceptance:
+		default:
+			return c, fmt.Errorf("types: %s %q: want %s, %s or %s", k, c.Types[k], TypeRequirement, TypeDesign, TypeAcceptance)
+		}
+		c.Types[k] = v
+	}
 	return c, nil
 }
 
@@ -152,5 +180,11 @@ func merge(c *Config, o Config) {
 	}
 	if o.Profile != "" {
 		c.Profile = o.Profile
+	}
+	for k, v := range o.Types {
+		if c.Types == nil {
+			c.Types = map[string]string{}
+		}
+		c.Types[k] = v
 	}
 }

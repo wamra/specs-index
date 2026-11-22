@@ -60,7 +60,7 @@ func RemoveSource(st *store.Store, root, p string) error {
 	if n, _ := res.RowsAffected(); n == 0 {
 		return fmt.Errorf("source %q is not registered", rel)
 	}
-	_, err = run(context.Background(), st, root, true)
+	_, err = run(context.Background(), st, root, true, nil)
 	return err
 }
 

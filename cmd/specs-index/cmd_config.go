@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"io"
+	"sort"
+	"strings"
 
 	"github.com/wamra/specs-index/internal/api"
 )
@@ -69,6 +71,7 @@ func cmdConfig(args []string, out, errw io.Writer) int {
 	if r.Profile != "" {
 		fmt.Fprintf(out, "profile:     %s\n", r.Profile)
 	}
+	fmt.Fprintf(out, "types:       %s\n", typesLine(r.Types))
 	fmt.Fprintln(out, "environment variables:")
 	for _, v := range r.Environment {
 		cur := "not set"
@@ -78,4 +81,18 @@ func cmdConfig(args []string, out, errw io.Writer) int {
 		fmt.Fprintf(out, "  %s (%s)  %s\n", v.Name, cur, v.Description)
 	}
 	return 0
+}
+
+// typesLine renders the prefix mapping as "AC=acceptance, BRD=requirement".
+func typesLine(m map[string]string) string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	parts := make([]string, 0, len(keys))
+	for _, k := range keys {
+		parts = append(parts, k+"="+m[k])
+	}
+	return strings.Join(parts, ", ") + " (any other prefix: requirement)"
 }

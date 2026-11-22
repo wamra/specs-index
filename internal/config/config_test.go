@@ -119,3 +119,21 @@ func TestEnvVarsList(t *testing.T) {
 		t.Errorf("EnvVars has %d entries, want %d", len(got), len(want))
 	}
 }
+
+func TestTypesMergeAndValidate(t *testing.T) {
+	home := isolate(t)
+	writeConfig(t, home, `{"types":{"ZZ":"design","SCN":"Acceptance"}}`)
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.Types["ZZ"] != "design" || c.Types["SCN"] != "acceptance" || len(c.Types) != 2 {
+		t.Fatalf("types = %+v", c.Types)
+	}
+	for _, bad := range []string{`{"types":{"ZZ":"scenario"}}`, `{"types":{"zz":"design"}}`, `{"types":{"Z-1":"design"}}`, `{"types":{"":"design"}}`} {
+		writeConfig(t, home, bad)
+		if _, err := Load(); err == nil {
+			t.Errorf("%s: want an error", bad)
+		}
+	}
+}

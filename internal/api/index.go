@@ -69,7 +69,7 @@ func Index(ctx context.Context, st *store.Store, root string, cfg config.Config,
 	if len(srcs) == 0 {
 		return IndexResult{}, ErrNoSources
 	}
-	rep, err := indexer.Run(ctx, st, root)
+	rep, err := indexer.Run(ctx, st, root, cfg.Types)
 	if err != nil {
 		return IndexResult{}, err
 	}

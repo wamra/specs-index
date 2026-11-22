@@ -101,11 +101,14 @@ Each hit shows key, type, title, file and lines, status, and `(stale: ...)` when
   "provider": {"embed": "ollama"},
   "model": "embeddinggemma",
   "base_url": "",
-  "allow_cloud": false
+  "allow_cloud": false,
+  "types": {}
 }
 ```
 
 Fields: `provider.embed` (`ollama`, `openai`, `bedrock` or `none`; default `ollama`), `model` (default `embeddinggemma`, only for Ollama), `base_url`, `allow_cloud`, and the optional `dims` (vector size override), `api_key_env` (the name of the variable holding an OpenAI-compatible API key; the key is never stored), `region` and `profile` (AWS region and shared-config profile for Bedrock). An unknown provider or a malformed file is an error.
+
+`types` maps a Markdown ID prefix to an entity type, `requirement`, `design` or `acceptance`, and is merged over the defaults `BRD` = requirement, `FDS` = design, `AC` = acceptance; a prefix with no mapping is a requirement. Example: `"types": {"SRS": "requirement", "SDD": "design", "FDS": "acceptance"}`. A prefix must be upper-case letters and digits starting with a letter; any other type is an error. It is read from the config file only (there is no environment variable for it) and applies to Markdown documents only (Gherkin scenarios are always `scenario`). `index` remembers the mapping it parsed with: when the effective mapping changes, the next `index` parses every Markdown document again, including unchanged files. `config` prints the effective mapping (`types` in JSON).
 
 A non-local provider is contacted only when `allow_cloud` is true (or `SPECS_INDEX_ALLOW_CLOUD=true`, or `--allow-cloud` on `index` / `doctor`). Without any embedder, everything except vector and hybrid search works.
 

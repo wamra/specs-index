@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -46,9 +47,16 @@ const (
 	sniffBytes   = 8000
 )
 
+// metaTypes is the meta key holding the merged prefix-to-type mapping the
+// Markdown documents were last parsed with (JSON, keys sorted).
+const metaTypes = "markdown_types"
+
 // Run brings the index in step with the files under the registered sources.
-func Run(ctx context.Context, st *store.Store, root string) (Report, error) {
-	return run(ctx, st, root, false)
+// types maps Markdown ID prefixes to entity types over markdown.DefaultTypes.
+// When it differs from the mapping of the previous run, every Markdown
+// document is parsed again.
+func Run(ctx context.Context, st *store.Store, root string, types map[string]string) (Report, error) {
+	return run(ctx, st, root, false, types)
 }
 
 type docRow struct {
@@ -68,9 +76,10 @@ type runner struct {
 	removed   map[string]bool
 	failures  []Failure
 	pruneOnly bool
+	types     map[string]string // merged prefix -> type mapping for markdown.Parse
 }
 
-func run(ctx context.Context, st *store.Store, root string, pruneOnly bool) (Report, error) {
+func run(ctx context.Context, st *store.Store, root string, pruneOnly bool, types map[string]string) (Report, error) {
 	files, discFails, err := discover(ctx, st, root)
 	if err != nil {
 		return Report{}, err
@@ -80,6 +89,34 @@ func run(ctx context.Context, st *store.Store, root string, pruneOnly bool) (Rep
 		cands: map[string]bool{}, pending: map[string]bool{},
 		parsed: map[string]bool{}, failed: map[string]bool{}, removed: map[string]bool{},
 		failures: discFails,
+	}
+	stored, err := st.Meta(metaTypes)
+	if err != nil {
+		return Report{}, err
+	}
+	var typesJSON string
+	if pruneOnly {
+		// remove has no configuration: re-parse with the mapping the index
+		// was built with.
+		var m map[string]string
+		if stored != "" {
+			if err := json.Unmarshal([]byte(stored), &m); err != nil {
+				return Report{}, fmt.Errorf("meta %s: %w", metaTypes, err)
+			}
+		}
+		r.types = markdown.MergeTypes(m)
+	} else {
+		r.types = markdown.MergeTypes(types)
+		b, _ := json.Marshal(r.types) // map keys are sorted
+		typesJSON = string(b)
+		if typesJSON != stored {
+			// Forget the file state of every Markdown document so the run
+			// below (or the next one, if this one stops) parses it again.
+			if _, err := r.db.ExecContext(ctx, `UPDATE documents SET sha256 = NULL, mtime = NULL, size = NULL
+				WHERE lower(path) NOT LIKE '%.feature'`); err != nil {
+				return Report{}, err
+			}
+		}
 	}
 	for _, f := range files {
 		r.cands[f] = true
@@ -154,6 +191,9 @@ func run(ctx context.Context, st *store.Store, root string, pruneOnly bool) (Rep
 		return rep, err
 	}
 	if !pruneOnly {
+		if err := st.SetMeta(metaTypes, typesJSON); err != nil {
+			return rep, err
+		}
 		if err := st.SetMeta("indexed_at", time.Now().UTC().Format(time.RFC3339)); err != nil {
 			return rep, err
 		}
@@ -254,7 +294,7 @@ func (r *runner) process(rel string, force bool) error {
 	if docKind(rel) == "feature" {
 		doc, err = gherkin.Parse(rel, src)
 	} else {
-		doc, err = markdown.Parse(rel, src, nil)
+		doc, err = markdown.Parse(rel, src, r.types)
 	}
 	if err != nil {
 		return r.fail(rel, exists, row, fi, "parse: "+err.Error())

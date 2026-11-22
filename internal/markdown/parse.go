@@ -53,10 +53,8 @@ type parser struct {
 	repeats     []model.Repeat
 }
 
-// Parse parses one Markdown file. path is stored in Doc.Path. types maps ID
-// prefix to entity type; is merged over DefaultTypes, and an unknown
-// prefix is a requirement.
-func Parse(path string, src []byte, types map[string]string) (model.Doc, error) {
+// MergeTypes returns DefaultTypes with types merged over it (a new map).
+func MergeTypes(types map[string]string) map[string]string {
 	merged := make(map[string]string, len(DefaultTypes)+len(types))
 	for k, v := range DefaultTypes {
 		merged[k] = v
@@ -64,7 +62,14 @@ func Parse(path string, src []byte, types map[string]string) (model.Doc, error) 
 	for k, v := range types {
 		merged[k] = v
 	}
-	types = merged
+	return merged
+}
+
+// Parse parses one Markdown file. path is stored in Doc.Path. types maps ID
+// prefix to entity type; is merged over DefaultTypes, and an unknown
+// prefix is a requirement.
+func Parse(path string, src []byte, types map[string]string) (model.Doc, error) {
+	types = MergeTypes(types)
 	text := strings.TrimPrefix(string(src), "\xEF\xBB\xBF")
 	text = strings.TrimSuffix(text, "\n")
 	var lines []string
