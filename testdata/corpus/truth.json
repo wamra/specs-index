@@ -409,7 +409,7 @@
    "title": "The exported archive contains a checksum file."
   },
   {
-   "key": "features/upload.feature#Document upload",
+   "key": "features/upload.feature",
    "type": "feature",
    "path": "features/upload.feature",
    "start_line": 1,
@@ -470,7 +470,7 @@
    ]
   },
   {
-   "key": "features/bulk_upload.feature#Bulk upload",
+   "key": "features/bulk_upload.feature",
    "type": "feature",
    "path": "features/bulk_upload.feature",
    "start_line": 1,
@@ -517,7 +517,7 @@
    ]
   },
   {
-   "key": "features/search.feature#Document search",
+   "key": "features/search.feature",
    "type": "feature",
    "path": "features/search.feature",
    "start_line": 1,
@@ -589,7 +589,7 @@
    ]
   },
   {
-   "key": "features/versions.feature#Version history",
+   "key": "features/versions.feature",
    "type": "feature",
    "path": "features/versions.feature",
    "start_line": 1,
@@ -651,7 +651,7 @@
    ]
   },
   {
-   "key": "features/access.feature#Access control",
+   "key": "features/access.feature",
    "type": "feature",
    "path": "features/access.feature",
    "start_line": 1,
@@ -710,7 +710,7 @@
    ]
   },
   {
-   "key": "features/sharing.feature#Share links",
+   "key": "features/sharing.feature",
    "type": "feature",
    "path": "features/sharing.feature",
    "start_line": 1,
@@ -770,7 +770,7 @@
    ]
   },
   {
-   "key": "features/lifecycle.feature#Retention and holds",
+   "key": "features/lifecycle.feature",
    "type": "feature",
    "path": "features/lifecycle.feature",
    "start_line": 1,
@@ -817,7 +817,7 @@
    ]
   },
   {
-   "key": "features/operations.feature#Preview, notification and export",
+   "key": "features/operations.feature",
    "type": "feature",
    "path": "features/operations.feature",
    "start_line": 1,
@@ -868,647 +868,905 @@
   {
    "src": "FDS-001",
    "dst": "features/upload.feature#Upload a single document",
-   "kind": "verified_by"
+   "kind": "verified_by",
+   "origin": "tag",
+   "path": "features/upload.feature"
   },
   {
    "src": "BRD-002",
    "dst": "features/upload.feature#Upload a single document",
-   "kind": "verified_by"
+   "kind": "verified_by",
+   "origin": "tag",
+   "path": "features/upload.feature"
   },
   {
    "src": "FDS-001",
    "dst": "features/upload.feature#Reject an oversized file",
-   "kind": "verified_by"
+   "kind": "verified_by",
+   "origin": "tag",
+   "path": "features/upload.feature"
   },
   {
    "src": "BRD-002",
    "dst": "features/upload.feature#Reject an oversized file",
-   "kind": "verified_by"
+   "kind": "verified_by",
+   "origin": "tag",
+   "path": "features/upload.feature"
   },
   {
    "src": "FDS-001",
    "dst": "features/upload.feature#Reject unsupported file types",
-   "kind": "verified_by"
+   "kind": "verified_by",
+   "origin": "tag",
+   "path": "features/upload.feature"
   },
   {
    "src": "BRD-002",
    "dst": "features/upload.feature#Reject unsupported file types",
-   "kind": "verified_by"
+   "kind": "verified_by",
+   "origin": "tag",
+   "path": "features/upload.feature"
   },
   {
    "src": "FDS-001",
    "dst": "features/upload.feature#Show progress while a file uploads",
-   "kind": "verified_by"
+   "kind": "verified_by",
+   "origin": "tag",
+   "path": "features/upload.feature"
   },
   {
    "src": "FDS-002",
    "dst": "features/bulk_upload.feature#Upload a folder of documents",
-   "kind": "verified_by"
+   "kind": "verified_by",
+   "origin": "tag",
+   "path": "features/bulk_upload.feature"
   },
   {
    "src": "BRD-003",
    "dst": "features/bulk_upload.feature#Upload a folder of documents",
-   "kind": "verified_by"
+   "kind": "verified_by",
+   "origin": "tag",
+   "path": "features/bulk_upload.feature"
   },
   {
    "src": "FDS-002",
    "dst": "features/bulk_upload.feature#Resume an interrupted upload",
-   "kind": "verified_by"
+   "kind": "verified_by",
+   "origin": "tag",
+   "path": "features/bulk_upload.feature"
   },
   {
    "src": "BRD-004",
    "dst": "features/bulk_upload.feature#Resume an interrupted upload",
-   "kind": "verified_by"
+   "kind": "verified_by",
+   "origin": "tag",
+   "path": "features/bulk_upload.feature"
   },
   {
    "src": "FDS-002",
    "dst": "features/bulk_upload.feature#Skip duplicates in a batch",
-   "kind": "verified_by"
+   "kind": "verified_by",
+   "origin": "tag",
+   "path": "features/bulk_upload.feature"
   },
   {
    "src": "FDS-003",
    "dst": "features/search.feature#Exact title wins over text matches",
-   "kind": "verified_by"
+   "kind": "verified_by",
+   "origin": "tag",
+   "path": "features/search.feature"
   },
   {
    "src": "FDS-005",
    "dst": "features/search.feature#Exact title wins over text matches",
-   "kind": "verified_by"
+   "kind": "verified_by",
+   "origin": "tag",
+   "path": "features/search.feature"
   },
   {
    "src": "BRD-006",
    "dst": "features/search.feature#Exact title wins over text matches",
-   "kind": "verified_by"
+   "kind": "verified_by",
+   "origin": "tag",
+   "path": "features/search.feature"
   },
   {
    "src": "FDS-003",
    "dst": "features/search.feature#Filter results by status",
-   "kind": "verified_by"
+   "kind": "verified_by",
+   "origin": "tag",
+   "path": "features/search.feature"
   },
   {
    "src": "FDS-005",
    "dst": "features/search.feature#Filter results by status",
-   "kind": "verified_by"
+   "kind": "verified_by",
+   "origin": "tag",
+   "path": "features/search.feature"
   },
   {
    "src": "FDS-004",
    "dst": "features/search.feature#Filter results by status",
-   "kind": "verified_by"
+   "kind": "verified_by",
+   "origin": "tag",
+   "path": "features/search.feature"
   },
   {
    "src": "BRD-007",
    "dst": "features/search.feature#Filter results by status",
-   "kind": "verified_by"
+   "kind": "verified_by",
+   "origin": "tag",
+   "path": "features/search.feature"
   },
   {
    "src": "FDS-003",
    "dst": "features/search.feature#Excluded tag hides matching results",
-   "kind": "verified_by"
+   "kind": "verified_by",
+   "origin": "tag",
+   "path": "features/search.feature"
   },
   {
    "src": "FDS-005",
    "dst": "features/search.feature#Excluded tag hides matching results",
-   "kind": "verified_by"
+   "kind": "verified_by",
+   "origin": "tag",
+   "path": "features/search.feature"
   },
   {
    "src": "BRD-007",
    "dst": "features/search.feature#Excluded tag hides matching results",
-   "kind": "verified_by"
+   "kind": "verified_by",
+   "origin": "tag",
+   "path": "features/search.feature"
   },
   {
    "src": "FDS-003",
    "dst": "features/search.feature#Show a message when nothing matches",
-   "kind": "verified_by"
+   "kind": "verified_by",
+   "origin": "tag",
+   "path": "features/search.feature"
   },
   {
    "src": "FDS-005",
    "dst": "features/search.feature#Show a message when nothing matches",
-   "kind": "verified_by"
+   "kind": "verified_by",
+   "origin": "tag",
+   "path": "features/search.feature"
   },
   {
    "src": "FDS-003",
    "dst": "features/search.feature#Search inside one folder",
-   "kind": "verified_by"
+   "kind": "verified_by",
+   "origin": "tag",
+   "path": "features/search.feature"
   },
   {
    "src": "FDS-005",
    "dst": "features/search.feature#Search inside one folder",
-   "kind": "verified_by"
+   "kind": "verified_by",
+   "origin": "tag",
+   "path": "features/search.feature"
   },
   {
    "src": "FDS-006",
    "dst": "features/versions.feature#List the versions of a document",
-   "kind": "verified_by"
+   "kind": "verified_by",
+   "origin": "tag",
+   "path": "features/versions.feature"
   },
   {
    "src": "BRD-008",
    "dst": "features/versions.feature#List the versions of a document",
-   "kind": "verified_by"
+   "kind": "verified_by",
+   "origin": "tag",
+   "path": "features/versions.feature"
   },
   {
    "src": "FDS-006",
    "dst": "SCN-101",
-   "kind": "verified_by"
+   "kind": "verified_by",
+   "origin": "tag",
+   "path": "features/versions.feature"
   },
   {
    "src": "BRD-009",
    "dst": "SCN-101",
-   "kind": "verified_by"
+   "kind": "verified_by",
+   "origin": "tag",
+   "path": "features/versions.feature"
   },
   {
    "src": "FDS-006",
    "dst": "features/versions.feature#Viewer cannot restore a version",
-   "kind": "verified_by"
+   "kind": "verified_by",
+   "origin": "tag",
+   "path": "features/versions.feature"
   },
   {
    "src": "BRD-009",
    "dst": "features/versions.feature#Viewer cannot restore a version",
-   "kind": "verified_by"
+   "kind": "verified_by",
+   "origin": "tag",
+   "path": "features/versions.feature"
   },
   {
    "src": "FDS-006",
    "dst": "features/versions.feature#Restoring creates a new version",
-   "kind": "verified_by"
+   "kind": "verified_by",
+   "origin": "tag",
+   "path": "features/versions.feature"
   },
   {
    "src": "BRD-009",
    "dst": "features/versions.feature#Restoring creates a new version",
-   "kind": "verified_by"
+   "kind": "verified_by",
+   "origin": "tag",
+   "path": "features/versions.feature"
   },
   {
    "src": "FDS-007",
    "dst": "SCN-102",
-   "kind": "verified_by"
+   "kind": "verified_by",
+   "origin": "tag",
+   "path": "features/access.feature"
   },
   {
    "src": "BRD-011",
    "dst": "SCN-102",
-   "kind": "verified_by"
+   "kind": "verified_by",
+   "origin": "tag",
+   "path": "features/access.feature"
   },
   {
    "src": "FDS-008",
    "dst": "features/access.feature#Viewer cannot edit a document",
-   "kind": "verified_by"
+   "kind": "verified_by",
+   "origin": "tag",
+   "path": "features/access.feature"
   },
   {
    "src": "BRD-012",
    "dst": "features/access.feature#Viewer cannot edit a document",
-   "kind": "verified_by"
+   "kind": "verified_by",
+   "origin": "tag",
+   "path": "features/access.feature"
   },
   {
    "src": "FDS-008",
    "dst": "features/access.feature#Admin assigns a role to a group",
-   "kind": "verified_by"
+   "kind": "verified_by",
+   "origin": "tag",
+   "path": "features/access.feature"
   },
   {
    "src": "BRD-012",
    "dst": "features/access.feature#Admin assigns a role to a group",
-   "kind": "verified_by"
+   "kind": "verified_by",
+   "origin": "tag",
+   "path": "features/access.feature"
   },
   {
    "src": "FDS-009",
    "dst": "features/sharing.feature#Create an expiring share link",
-   "kind": "verified_by"
+   "kind": "verified_by",
+   "origin": "tag",
+   "path": "features/sharing.feature"
   },
   {
    "src": "BRD-013",
    "dst": "features/sharing.feature#Create an expiring share link",
-   "kind": "verified_by"
+   "kind": "verified_by",
+   "origin": "tag",
+   "path": "features/sharing.feature"
   },
   {
    "src": "FDS-009",
    "dst": "features/sharing.feature#Revoke a share link",
-   "kind": "verified_by"
+   "kind": "verified_by",
+   "origin": "tag",
+   "path": "features/sharing.feature"
   },
   {
    "src": "BRD-013",
    "dst": "features/sharing.feature#Revoke a share link",
-   "kind": "verified_by"
+   "kind": "verified_by",
+   "origin": "tag",
+   "path": "features/sharing.feature"
   },
   {
    "src": "FDS-009",
    "dst": "features/sharing.feature#Disabled external sharing blocks new links",
-   "kind": "verified_by"
+   "kind": "verified_by",
+   "origin": "tag",
+   "path": "features/sharing.feature"
   },
   {
    "src": "BRD-014",
    "dst": "features/sharing.feature#Disabled external sharing blocks new links",
-   "kind": "verified_by"
+   "kind": "verified_by",
+   "origin": "tag",
+   "path": "features/sharing.feature"
   },
   {
    "src": "FDS-009",
    "dst": "features/sharing.feature#Share link opens a read-only preview",
-   "kind": "verified_by"
+   "kind": "verified_by",
+   "origin": "tag",
+   "path": "features/sharing.feature"
   },
   {
    "src": "FDS-011",
    "dst": "features/lifecycle.feature#Retention expiry archives a document",
-   "kind": "verified_by"
+   "kind": "verified_by",
+   "origin": "tag",
+   "path": "features/lifecycle.feature"
   },
   {
    "src": "BRD-016",
    "dst": "features/lifecycle.feature#Retention expiry archives a document",
-   "kind": "verified_by"
+   "kind": "verified_by",
+   "origin": "tag",
+   "path": "features/lifecycle.feature"
   },
   {
    "src": "FDS-011",
    "dst": "features/lifecycle.feature#Legal hold blocks deletion",
-   "kind": "verified_by"
+   "kind": "verified_by",
+   "origin": "tag",
+   "path": "features/lifecycle.feature"
   },
   {
    "src": "BRD-017",
    "dst": "features/lifecycle.feature#Legal hold blocks deletion",
-   "kind": "verified_by"
+   "kind": "verified_by",
+   "origin": "tag",
+   "path": "features/lifecycle.feature"
   },
   {
    "src": "FDS-011",
    "dst": "features/lifecycle.feature#Retention report lists expiring documents",
-   "kind": "verified_by"
+   "kind": "verified_by",
+   "origin": "tag",
+   "path": "features/lifecycle.feature"
   },
   {
    "src": "BRD-016",
    "dst": "features/lifecycle.feature#Retention report lists expiring documents",
-   "kind": "verified_by"
+   "kind": "verified_by",
+   "origin": "tag",
+   "path": "features/lifecycle.feature"
   },
   {
    "src": "FDS-010",
    "dst": "features/operations.feature#Render a PDF preview",
-   "kind": "verified_by"
+   "kind": "verified_by",
+   "origin": "tag",
+   "path": "features/operations.feature"
   },
   {
    "src": "BRD-018",
    "dst": "features/operations.feature#Render a PDF preview",
-   "kind": "verified_by"
+   "kind": "verified_by",
+   "origin": "tag",
+   "path": "features/operations.feature"
   },
   {
    "src": "FDS-012",
    "dst": "features/operations.feature#Notify watchers of a new version",
-   "kind": "verified_by"
+   "kind": "verified_by",
+   "origin": "tag",
+   "path": "features/operations.feature"
   },
   {
    "src": "BRD-020",
    "dst": "features/operations.feature#Notify watchers of a new version",
-   "kind": "verified_by"
+   "kind": "verified_by",
+   "origin": "tag",
+   "path": "features/operations.feature"
   },
   {
    "src": "FDS-013",
    "dst": "features/operations.feature#Export a folder as an archive",
-   "kind": "verified_by"
+   "kind": "verified_by",
+   "origin": "tag",
+   "path": "features/operations.feature"
   },
   {
    "src": "BRD-022",
    "dst": "features/operations.feature#Export a folder as an archive",
-   "kind": "verified_by"
+   "kind": "verified_by",
+   "origin": "tag",
+   "path": "features/operations.feature"
   },
   {
    "src": "BRD-001",
    "dst": "BRD-002",
-   "kind": "parent_of"
+   "kind": "parent_of",
+   "origin": "field",
+   "path": "docs/brd.md"
   },
   {
    "src": "BRD-002",
    "dst": "BRD-003",
-   "kind": "parent_of"
+   "kind": "parent_of",
+   "origin": "field",
+   "path": "docs/brd.md"
   },
   {
    "src": "BRD-003",
    "dst": "BRD-004",
-   "kind": "parent_of"
+   "kind": "parent_of",
+   "origin": "field",
+   "path": "docs/brd.md"
   },
   {
    "src": "BRD-001",
    "dst": "BRD-005",
-   "kind": "parent_of"
+   "kind": "parent_of",
+   "origin": "field",
+   "path": "docs/brd.md"
   },
   {
    "src": "BRD-005",
    "dst": "BRD-006",
-   "kind": "parent_of"
+   "kind": "parent_of",
+   "origin": "field",
+   "path": "docs/brd.md"
   },
   {
    "src": "BRD-005",
    "dst": "BRD-007",
-   "kind": "parent_of"
+   "kind": "parent_of",
+   "origin": "field",
+   "path": "docs/brd.md"
   },
   {
    "src": "BRD-001",
    "dst": "BRD-008",
-   "kind": "parent_of"
+   "kind": "parent_of",
+   "origin": "field",
+   "path": "docs/brd.md"
   },
   {
    "src": "BRD-008",
    "dst": "BRD-009",
-   "kind": "parent_of"
+   "kind": "parent_of",
+   "origin": "field",
+   "path": "docs/brd.md"
   },
   {
    "src": "BRD-001",
    "dst": "BRD-010",
-   "kind": "parent_of"
+   "kind": "parent_of",
+   "origin": "field",
+   "path": "docs/brd.md"
   },
   {
    "src": "BRD-010",
    "dst": "BRD-011",
-   "kind": "parent_of"
+   "kind": "parent_of",
+   "origin": "field",
+   "path": "docs/brd.md"
   },
   {
    "src": "BRD-010",
    "dst": "BRD-012",
-   "kind": "parent_of"
+   "kind": "parent_of",
+   "origin": "field",
+   "path": "docs/brd.md"
   },
   {
    "src": "BRD-010",
    "dst": "BRD-013",
-   "kind": "parent_of"
+   "kind": "parent_of",
+   "origin": "field",
+   "path": "docs/brd.md"
   },
   {
    "src": "BRD-010",
    "dst": "BRD-014",
-   "kind": "parent_of"
+   "kind": "parent_of",
+   "origin": "field",
+   "path": "docs/brd.md"
   },
   {
    "src": "BRD-001",
    "dst": "BRD-015",
-   "kind": "parent_of"
+   "kind": "parent_of",
+   "origin": "field",
+   "path": "docs/brd.md"
   },
   {
    "src": "BRD-001",
    "dst": "BRD-016",
-   "kind": "parent_of"
+   "kind": "parent_of",
+   "origin": "field",
+   "path": "docs/brd.md"
   },
   {
    "src": "BRD-016",
    "dst": "BRD-017",
-   "kind": "parent_of"
+   "kind": "parent_of",
+   "origin": "field",
+   "path": "docs/brd.md"
   },
   {
    "src": "BRD-001",
    "dst": "BRD-018",
-   "kind": "parent_of"
+   "kind": "parent_of",
+   "origin": "field",
+   "path": "docs/brd.md"
   },
   {
    "src": "BRD-018",
    "dst": "BRD-019",
-   "kind": "parent_of"
+   "kind": "parent_of",
+   "origin": "field",
+   "path": "docs/brd.md"
   },
   {
    "src": "BRD-001",
    "dst": "BRD-020",
-   "kind": "parent_of"
+   "kind": "parent_of",
+   "origin": "field",
+   "path": "docs/brd.md"
   },
   {
    "src": "BRD-020",
    "dst": "BRD-021",
-   "kind": "parent_of"
+   "kind": "parent_of",
+   "origin": "field",
+   "path": "docs/brd.md"
   },
   {
    "src": "BRD-001",
    "dst": "BRD-022",
-   "kind": "parent_of"
+   "kind": "parent_of",
+   "origin": "field",
+   "path": "docs/brd.md"
   },
   {
    "src": "BRD-001",
    "dst": "BRD-023",
-   "kind": "parent_of"
+   "kind": "parent_of",
+   "origin": "field",
+   "path": "docs/brd.md"
   },
   {
    "src": "BRD-001",
    "dst": "BRD-024",
-   "kind": "parent_of"
+   "kind": "parent_of",
+   "origin": "field",
+   "path": "docs/brd.md"
   },
   {
    "src": "BRD-001",
    "dst": "BRD-025",
-   "kind": "parent_of"
+   "kind": "parent_of",
+   "origin": "field",
+   "path": "docs/brd.md"
   },
   {
    "src": "BRD-003",
    "dst": "BRD-002",
-   "kind": "depends_on"
+   "kind": "depends_on",
+   "origin": "field",
+   "path": "docs/brd.md"
   },
   {
    "src": "BRD-007",
    "dst": "BRD-006",
-   "kind": "depends_on"
+   "kind": "depends_on",
+   "origin": "field",
+   "path": "docs/brd.md"
   },
   {
    "src": "BRD-009",
    "dst": "BRD-008",
-   "kind": "depends_on"
+   "kind": "depends_on",
+   "origin": "field",
+   "path": "docs/brd.md"
   },
   {
    "src": "BRD-017",
    "dst": "BRD-016",
-   "kind": "depends_on"
+   "kind": "depends_on",
+   "origin": "field",
+   "path": "docs/brd.md"
   },
   {
    "src": "BRD-025",
    "dst": "BRD-099",
-   "kind": "depends_on"
+   "kind": "depends_on",
+   "origin": "field",
+   "path": "docs/brd.md"
   },
   {
    "src": "BRD-013",
    "dst": "BRD-014",
-   "kind": "conflicts_with"
+   "kind": "conflicts_with",
+   "origin": "field",
+   "path": "docs/brd.md"
   },
   {
    "src": "BRD-012",
    "dst": "BRD-011",
-   "kind": "references"
+   "kind": "references",
+   "origin": "mention",
+   "path": "docs/brd.md"
   },
   {
    "src": "BRD-018",
    "dst": "FDS-010",
-   "kind": "references"
+   "kind": "references",
+   "origin": "mention",
+   "path": "docs/brd.md"
   },
   {
    "src": "FDS-003",
    "dst": "FDS-005",
-   "kind": "references"
+   "kind": "references",
+   "origin": "mention",
+   "path": "docs/fds.md"
   },
   {
    "src": "FDS-005",
    "dst": "BRD-008",
-   "kind": "references"
+   "kind": "references",
+   "origin": "mention",
+   "path": "docs/fds.md"
   },
   {
    "src": "FDS-001",
    "dst": "BRD-001",
-   "kind": "implements"
+   "kind": "implements",
+   "origin": "table",
+   "path": "docs/fds.md"
   },
   {
    "src": "FDS-001",
    "dst": "BRD-002",
-   "kind": "implements"
+   "kind": "implements",
+   "origin": "table",
+   "path": "docs/fds.md"
   },
   {
    "src": "FDS-002",
    "dst": "BRD-003",
-   "kind": "implements"
+   "kind": "implements",
+   "origin": "table",
+   "path": "docs/fds.md"
   },
   {
    "src": "FDS-002",
    "dst": "BRD-004",
-   "kind": "implements"
+   "kind": "implements",
+   "origin": "table",
+   "path": "docs/fds.md"
   },
   {
    "src": "FDS-003",
    "dst": "BRD-006",
-   "kind": "implements"
+   "kind": "implements",
+   "origin": "table",
+   "path": "docs/fds.md"
   },
   {
    "src": "FDS-004",
    "dst": "BRD-007",
-   "kind": "implements"
+   "kind": "implements",
+   "origin": "table",
+   "path": "docs/fds.md"
   },
   {
    "src": "FDS-005",
    "dst": "BRD-005",
-   "kind": "implements"
+   "kind": "implements",
+   "origin": "table",
+   "path": "docs/fds.md"
   },
   {
    "src": "FDS-005",
    "dst": "BRD-006",
-   "kind": "implements"
+   "kind": "implements",
+   "origin": "table",
+   "path": "docs/fds.md"
   },
   {
    "src": "FDS-005",
    "dst": "BRD-007",
-   "kind": "implements"
+   "kind": "implements",
+   "origin": "table",
+   "path": "docs/fds.md"
   },
   {
    "src": "FDS-006",
    "dst": "BRD-008",
-   "kind": "implements"
+   "kind": "implements",
+   "origin": "table",
+   "path": "docs/fds.md"
   },
   {
    "src": "FDS-006",
    "dst": "BRD-009",
-   "kind": "implements"
+   "kind": "implements",
+   "origin": "table",
+   "path": "docs/fds.md"
   },
   {
    "src": "FDS-007",
    "dst": "BRD-010",
-   "kind": "implements"
+   "kind": "implements",
+   "origin": "table",
+   "path": "docs/fds.md"
   },
   {
    "src": "FDS-007",
    "dst": "BRD-011",
-   "kind": "implements"
+   "kind": "implements",
+   "origin": "table",
+   "path": "docs/fds.md"
   },
   {
    "src": "FDS-008",
    "dst": "BRD-012",
-   "kind": "implements"
+   "kind": "implements",
+   "origin": "table",
+   "path": "docs/fds.md"
   },
   {
    "src": "FDS-009",
    "dst": "BRD-013",
-   "kind": "implements"
+   "kind": "implements",
+   "origin": "table",
+   "path": "docs/fds.md"
   },
   {
    "src": "FDS-009",
    "dst": "BRD-014",
-   "kind": "implements"
+   "kind": "implements",
+   "origin": "table",
+   "path": "docs/fds.md"
   },
   {
    "src": "FDS-010",
    "dst": "BRD-018",
-   "kind": "implements"
+   "kind": "implements",
+   "origin": "table",
+   "path": "docs/fds.md"
   },
   {
    "src": "FDS-011",
    "dst": "BRD-016",
-   "kind": "implements"
+   "kind": "implements",
+   "origin": "table",
+   "path": "docs/fds.md"
   },
   {
    "src": "FDS-011",
    "dst": "BRD-017",
-   "kind": "implements"
+   "kind": "implements",
+   "origin": "table",
+   "path": "docs/fds.md"
   },
   {
    "src": "FDS-012",
    "dst": "BRD-020",
-   "kind": "implements"
+   "kind": "implements",
+   "origin": "table",
+   "path": "docs/fds.md"
   },
   {
    "src": "FDS-012",
    "dst": "BRD-021",
-   "kind": "implements"
+   "kind": "implements",
+   "origin": "table",
+   "path": "docs/fds.md"
   },
   {
    "src": "FDS-013",
    "dst": "BRD-022",
-   "kind": "implements"
+   "kind": "implements",
+   "origin": "table",
+   "path": "docs/fds.md"
   },
   {
    "src": "FDS-014",
    "dst": "BRD-022",
-   "kind": "implements"
+   "kind": "implements",
+   "origin": "table",
+   "path": "docs/fds.md"
   },
   {
    "src": "FDS-015",
    "dst": "BRD-024",
-   "kind": "implements"
+   "kind": "implements",
+   "origin": "table",
+   "path": "docs/fds.md"
   },
   {
    "src": "FDS-015",
    "dst": "BRD-025",
-   "kind": "implements"
+   "kind": "implements",
+   "origin": "table",
+   "path": "docs/fds.md"
   },
   {
    "src": "FDS-001",
    "dst": "AC-001",
-   "kind": "verified_by"
+   "kind": "verified_by",
+   "origin": "table",
+   "path": "docs/acceptance.md"
   },
   {
    "src": "FDS-002",
    "dst": "AC-002",
-   "kind": "verified_by"
+   "kind": "verified_by",
+   "origin": "table",
+   "path": "docs/acceptance.md"
   },
   {
    "src": "FDS-003",
    "dst": "AC-003",
-   "kind": "verified_by"
+   "kind": "verified_by",
+   "origin": "table",
+   "path": "docs/acceptance.md"
   },
   {
    "src": "FDS-004",
    "dst": "AC-004",
-   "kind": "verified_by"
+   "kind": "verified_by",
+   "origin": "table",
+   "path": "docs/acceptance.md"
   },
   {
    "src": "FDS-005",
    "dst": "AC-004",
-   "kind": "verified_by"
+   "kind": "verified_by",
+   "origin": "table",
+   "path": "docs/acceptance.md"
   },
   {
    "src": "FDS-006",
    "dst": "AC-005",
-   "kind": "verified_by"
+   "kind": "verified_by",
+   "origin": "table",
+   "path": "docs/acceptance.md"
   },
   {
    "src": "FDS-007",
    "dst": "AC-006",
-   "kind": "verified_by"
+   "kind": "verified_by",
+   "origin": "table",
+   "path": "docs/acceptance.md"
   },
   {
    "src": "FDS-008",
    "dst": "AC-007",
-   "kind": "verified_by"
+   "kind": "verified_by",
+   "origin": "table",
+   "path": "docs/acceptance.md"
   },
   {
    "src": "FDS-009",
    "dst": "AC-008",
-   "kind": "verified_by"
+   "kind": "verified_by",
+   "origin": "table",
+   "path": "docs/acceptance.md"
   },
   {
    "src": "FDS-011",
    "dst": "AC-009",
-   "kind": "verified_by"
+   "kind": "verified_by",
+   "origin": "table",
+   "path": "docs/acceptance.md"
   },
   {
    "src": "FDS-013",
    "dst": "AC-010",
-   "kind": "verified_by"
+   "kind": "verified_by",
+   "origin": "table",
+   "path": "docs/acceptance.md"
   }
  ],
  "uncovered": {

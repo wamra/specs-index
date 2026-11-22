@@ -22,7 +22,9 @@ invented.
 - `entities`: `key`, `type`, `path` (corpus-relative, forward slashes),
   `start_line`, `end_line` (1-based, inclusive), `title`, and for scenarios
   `step_lines`.
-- `edges`: explicit edges `src`, `dst`, `kind`, with the design's directions:
+- `edges`: explicit edges `src`, `dst`, `kind`, `origin` (`field`, `table`,
+  `tag` or `mention`, as in `model.Edge.Origin`) and `path` (corpus-relative
+  file where the edge is written: `.feature` for `tag`, `.md` otherwise), with the design's directions:
   `Parent: X` on Y gives `X parent_of Y`; `Mapped BRDs` gives `FDS implements
   BRD`; an AC table's `FDS` column gives `FDS verified_by AC`; an ID tag on a
   feature, rule or scenario gives `<tagged key> verified_by <scenario>` for
@@ -37,7 +39,8 @@ invented.
 
 Requirements, designs and criteria use their ID. A scenario uses
 `<corpus-relative path>#<scenario name>`, or the `@id:SCN-nnn` value when the
-tag is present. A feature uses `<path>#<feature name>`. Rule and Background
+tag is present. A feature uses its bare corpus-relative path (the feature
+name is in `title`). Rule and Background
 blocks are structural and have no entity entry.
 
 ## Span convention

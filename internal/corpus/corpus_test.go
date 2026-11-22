@@ -49,6 +49,9 @@ func TestTruthIsSelfConsistent(t *testing.T) {
 		at := e.StartLine
 		switch e.Type {
 		case "scenario", "feature":
+			if e.Type == "feature" && e.Key != e.Path {
+				t.Errorf("feature key %q must equal its path %q", e.Key, e.Path)
+			}
 			for at < e.EndLine && strings.HasPrefix(strings.TrimSpace(lines[at-1]), "@") {
 				at++
 			}
@@ -96,6 +99,16 @@ func TestTruthIsSelfConsistent(t *testing.T) {
 		}
 		if _, ok := byKey[e.Dst]; !ok && !dangling[e.Dst] {
 			t.Errorf("edge destination %q is neither an entity nor dangling", e.Dst)
+		}
+		if !slices.Contains([]string{"field", "table", "tag", "mention"}, e.Origin) {
+			t.Errorf("edge %s->%s: bad origin %q", e.Src, e.Dst, e.Origin)
+		}
+		if _, err := os.Stat(filepath.Join(Dir(), filepath.FromSlash(e.Path))); err != nil {
+			t.Errorf("edge %s->%s: path %q: %v", e.Src, e.Dst, e.Path, err)
+		}
+		if isTag, isFeature := e.Origin == "tag", strings.HasSuffix(e.Path, ".feature"); isTag != isFeature ||
+			(!isFeature && !strings.HasSuffix(e.Path, ".md")) {
+			t.Errorf("edge %s->%s: origin %q does not fit path %q", e.Src, e.Dst, e.Origin, e.Path)
 		}
 		switch e.Kind {
 		case "implements":

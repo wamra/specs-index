@@ -33,6 +33,10 @@ type TruthEdge struct {
 	Src  string `json:"src"`
 	Dst  string `json:"dst"`
 	Kind string `json:"kind"`
+	// Origin is field, table, tag or mention (model.Edge.Origin values).
+	Origin string `json:"origin"`
+	// Path is the corpus-relative file in which the edge is written.
+	Path string `json:"path"`
 }
 
 // TruthUncovered lists the deliberate gaps in the corpus.
