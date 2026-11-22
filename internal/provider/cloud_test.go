@@ -15,7 +15,6 @@ import (
 
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/bedrockruntime"
-	"github.com/aws/aws-sdk-go-v2/service/bedrockruntime/types"
 	"github.com/aws/smithy-go"
 )
 
@@ -24,156 +23,6 @@ type awsLoadOptions = awsconfig.LoadOptions
 func init() {
 	// No test waits for the production backoff (1s/4s/16s).
 	retryDelays = []time.Duration{time.Millisecond, 2 * time.Millisecond, 3 * time.Millisecond}
-}
-
-func anthropicSum(t *testing.T, url string) Summarizer {
-	t.Helper()
-	s, err := NewSummarizer(SummarizeConfig{Provider: Anthropic, BaseURL: url})
-	if err != nil {
-		t.Fatal(err)
-	}
-	return s
-}
-
-func TestAnthropicRequestShapeAndResponse(t *testing.T) {
-	t.Setenv("ANTHROPIC_API_KEY", "sk-test")
-	var hdr http.Header
-	var body map[string]any
-	var path string
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		hdr, path = r.Header.Clone(), r.URL.Path
-		json.NewDecoder(r.Body).Decode(&body)
-		fmt.Fprint(w, `{"id":"msg_1","type":"message","content":[{"type":"text","text":"  the summary \n"}]}`)
-	}))
-	defer srv.Close()
-	got, err := anthropicSum(t, srv.URL).Summarize(context.Background(), "be brief", "the input", 77)
-	if err != nil || got != "the summary" {
-		t.Fatalf("got %q err %v", got, err)
-	}
-	if path != "/v1/messages" || hdr.Get("x-api-key") != "sk-test" || hdr.Get("anthropic-version") != "2023-06-01" || hdr.Get("Authorization") != "" {
-		t.Fatalf("path %q headers %v", path, hdr)
-	}
-	if body["model"] != "claude-haiku-4-5" || body["max_tokens"] != float64(77) || body["temperature"] != 0.2 || body["system"] != "be brief" {
-		t.Fatalf("body %v", body)
-	}
-	msgs := body["messages"].([]any)
-	m := msgs[0].(map[string]any)
-	if len(msgs) != 1 || m["role"] != "user" || m["content"] != "the input" {
-		t.Fatalf("messages %v", msgs)
-	}
-	if s := anthropicSum(t, srv.URL); s.Fingerprint() != "anthropic:claude-haiku-4-5" {
-		t.Fatal(s.Fingerprint())
-	}
-}
-
-func TestAnthropicBaseURLWithV1Suffix(t *testing.T) {
-	var path string
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		path = r.URL.Path
-		fmt.Fprint(w, `{"content":[{"type":"text","text":"x"}]}`)
-	}))
-	defer srv.Close()
-	if _, err := anthropicSum(t, srv.URL+"/v1/").Summarize(context.Background(), "s", "u", 1); err != nil || path != "/v1/messages" {
-		t.Fatalf("%q %v", path, err)
-	}
-}
-
-func TestAnthropicRetriesOn429HonoringRetryAfter(t *testing.T) {
-	var calls atomic.Int32
-	var stamps []time.Time
-	var mu sync.Mutex
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		mu.Lock()
-		stamps = append(stamps, time.Now())
-		mu.Unlock()
-		if calls.Add(1) <= 2 {
-			w.Header().Set("retry-after", "0.05")
-			w.WriteHeader(429)
-			fmt.Fprint(w, `{"type":"error","error":{"type":"rate_limit_error"}}`)
-			return
-		}
-		fmt.Fprint(w, `{"content":[{"type":"text","text":"ok"}]}`)
-	}))
-	defer srv.Close()
-	got, err := anthropicSum(t, srv.URL).Summarize(context.Background(), "s", "u", 1)
-	if err != nil || got != "ok" || calls.Load() != 3 {
-		t.Fatalf("got %q err %v calls %d", got, err, calls.Load())
-	}
-	for i := 1; i < len(stamps); i++ {
-		if d := stamps[i].Sub(stamps[i-1]); d < 45*time.Millisecond {
-			t.Fatalf("retry %d came after %v, retry-after was 50ms", i, d)
-		}
-	}
-}
-
-func TestAnthropic429ExhaustedIsDownAfterFourRequests(t *testing.T) {
-	var calls atomic.Int32
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		calls.Add(1)
-		w.WriteHeader(429)
-	}))
-	defer srv.Close()
-	_, err := anthropicSum(t, srv.URL).Summarize(context.Background(), "s", "u", 1)
-	if !errors.Is(err, ErrDown) || calls.Load() != 4 {
-		t.Fatalf("err %v calls %d", err, calls.Load())
-	}
-}
-
-func TestAnthropicErrorMapping(t *testing.T) {
-	for _, c := range []struct {
-		status  int
-		want    error
-		retries bool
-	}{
-		{401, ErrAuth, false}, {403, ErrAuth, false}, {400, ErrItem, false}, {413, ErrItem, false},
-		{500, ErrDown, false}, {529, ErrDown, false}, {503, ErrDown, false}, {429, ErrDown, true},
-	} {
-		var calls atomic.Int32
-		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			calls.Add(1)
-			w.WriteHeader(c.status)
-			fmt.Fprint(w, `{"type":"error","error":{"type":"overloaded_error","message":"x"}}`)
-		}))
-		_, err := anthropicSum(t, srv.URL).Summarize(context.Background(), "s", "u", 1)
-		srv.Close()
-		if !errors.Is(err, c.want) {
-			t.Errorf("HTTP %d: %v, want %v", c.status, err, c.want)
-		}
-		if c.want == ErrAuth && (AuthCode(err) != c.status || !IsSystemic(err)) {
-			t.Errorf("HTTP %d: auth code %d systemic %v", c.status, AuthCode(err), IsSystemic(err))
-		}
-		if !c.retries && calls.Load() != 1 {
-			t.Errorf("HTTP %d was retried (%d calls)", c.status, calls.Load())
-		}
-	}
-}
-
-func TestAnthropicBadResponseIsItemError(t *testing.T) {
-	srv := server(t, 200, `{"content":[]}`, nil)
-	if _, err := anthropicSum(t, srv.URL).Summarize(context.Background(), "s", "u", 1); !errors.Is(err, ErrItem) {
-		t.Fatal(err)
-	}
-}
-
-func TestAnthropicHealth(t *testing.T) {
-	t.Setenv("ANTHROPIC_API_KEY", "k")
-	var hdr http.Header
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		hdr = r.Header.Clone()
-		if r.URL.Path != "/v1/models" {
-			w.WriteHeader(404)
-			return
-		}
-		fmt.Fprint(w, `{"data":[]}`)
-	}))
-	defer srv.Close()
-	if err := anthropicSum(t, srv.URL).Health(context.Background()); err != nil || hdr.Get("x-api-key") != "k" {
-		t.Fatalf("%v %v", err, hdr)
-	}
-	bad := server(t, 401, `{}`, nil)
-	if err := anthropicSum(t, bad.URL).Health(context.Background()); !errors.Is(err, ErrAuth) {
-		t.Fatal(err)
-	}
 }
 
 func TestOpenAIRetries429(t *testing.T) {
@@ -236,23 +85,6 @@ func TestEmbedAnthropicIsConfigErrorWithHint(t *testing.T) {
 	}
 }
 
-func TestAnthropicSummarizeDefaults(t *testing.T) {
-	r := SummarizeConfig{Provider: Anthropic}.Resolved()
-	if r.BaseURL != "https://api.anthropic.com" || r.Model != "claude-haiku-4-5" || r.APIKeyEnv != "ANTHROPIC_API_KEY" || r.MaxInputChars != 8000 {
-		t.Fatalf("%+v", r)
-	}
-	if err := r.Validate(); err != nil {
-		t.Fatal(err)
-	}
-	if err := (SummarizeConfig{Provider: Bedrock}.Resolved()).Validate(); err == nil {
-		t.Fatal("bedrock without a model must be rejected")
-	}
-	bad := SummarizeConfig{Provider: Ollama, Kinds: []string{"tool_output", "bogus"}}.Resolved()
-	if err := bad.Validate(); err == nil || !strings.Contains(err.Error(), "bogus") {
-		t.Fatalf("kinds: %v", err)
-	}
-}
-
 func TestVoyageKnownModels(t *testing.T) {
 	for m, dims := range map[string]int{"voyage-3": 1024, "voyage-3-lite": 512, "VOYAGE-3": 1024} {
 		d, ok := KnownEmbedModel(m)
@@ -263,40 +95,6 @@ func TestVoyageKnownModels(t *testing.T) {
 	e := openaiEmb(t, "https://api.voyageai.com", EmbedConfig{Model: "voyage-3-lite"})
 	if e.Dims() != 512 || e.Fingerprint() != "openai|voyage-3-lite|512||v1" {
 		t.Fatalf("%d %s", e.Dims(), e.Fingerprint())
-	}
-}
-
-func TestHostedAndDailyCap(t *testing.T) {
-	for _, c := range []struct {
-		p, base string
-		hosted  bool
-	}{
-		{Ollama, "http://localhost:11434", false}, {Ollama, "https://example.com", false},
-		{OpenAI, "http://localhost:1234", false}, {OpenAI, "http://127.0.0.1:1234/v1", false}, {OpenAI, "http://192.168.1.5:8000", false},
-		{OpenAI, "http://workstation.local:1234", false}, {OpenAI, "https://api.openai.com", true}, {OpenAI, "https://api.voyageai.com", true},
-		{Anthropic, "https://api.anthropic.com", true}, {Bedrock, "", true},
-	} {
-		if Hosted(c.p, c.base) != c.hosted {
-			t.Errorf("Hosted(%s, %s) = %v", c.p, c.base, !c.hosted)
-		}
-	}
-	for _, c := range []struct {
-		set    int
-		hosted bool
-		want   int
-	}{{0, false, 0}, {0, true, 2000}, {50, true, 50}, {50, false, 50}, {-1, true, 0}} {
-		if got, _ := DailyCap(c.set, c.hosted); got != c.want {
-			t.Errorf("DailyCap(%d,%v) = %d, want %d", c.set, c.hosted, got, c.want)
-		}
-	}
-	if n, src := (SummarizeConfig{Provider: Anthropic}.Resolved()).DailyCap(); n != 2000 || src != "hosted default" {
-		t.Fatalf("%d %s", n, src)
-	}
-	if n, _ := (SummarizeConfig{}.Resolved()).DailyCap(); n != 0 {
-		t.Fatal("local default must be unlimited")
-	}
-	if n, _ := (EmbedConfig{Provider: OpenAI, BaseURL: "https://api.voyageai.com", Model: "voyage-3"}.Resolved()).DailyCap(); n != 2000 {
-		t.Fatal(n)
 	}
 }
 
@@ -323,11 +121,9 @@ func TestBedrockEmbedConfigValidation(t *testing.T) {
 // ---- bedrock ----
 
 type fakeAPI struct {
-	mu        sync.Mutex
-	invokes   []*bedrockruntime.InvokeModelInput
-	converses []*bedrockruntime.ConverseInput
-	invoke    func(call int, in *bedrockruntime.InvokeModelInput) (*bedrockruntime.InvokeModelOutput, error)
-	converse  func(call int, in *bedrockruntime.ConverseInput) (*bedrockruntime.ConverseOutput, error)
+	mu      sync.Mutex
+	invokes []*bedrockruntime.InvokeModelInput
+	invoke  func(call int, in *bedrockruntime.InvokeModelInput) (*bedrockruntime.InvokeModelOutput, error)
 }
 
 func (f *fakeAPI) InvokeModel(ctx context.Context, in *bedrockruntime.InvokeModelInput, _ ...func(*bedrockruntime.Options)) (*bedrockruntime.InvokeModelOutput, error) {
@@ -336,14 +132,6 @@ func (f *fakeAPI) InvokeModel(ctx context.Context, in *bedrockruntime.InvokeMode
 	n := len(f.invokes)
 	f.mu.Unlock()
 	return f.invoke(n, in)
-}
-
-func (f *fakeAPI) Converse(ctx context.Context, in *bedrockruntime.ConverseInput, _ ...func(*bedrockruntime.Options)) (*bedrockruntime.ConverseOutput, error) {
-	f.mu.Lock()
-	f.converses = append(f.converses, in)
-	n := len(f.converses)
-	f.mu.Unlock()
-	return f.converse(n, in)
 }
 
 type apiErr struct{ code, msg string }
@@ -363,17 +151,6 @@ func bedrockEmb(t *testing.T, api BedrockAPI, c EmbedConfig) *BedrockEmbedder {
 	be := e.(*BedrockEmbedder)
 	be.conn.api = api
 	return be
-}
-
-func bedrockSum(t *testing.T, api BedrockAPI, model string) *BedrockSummarizer {
-	t.Helper()
-	s, err := NewSummarizer(SummarizeConfig{Provider: Bedrock, Model: model})
-	if err != nil {
-		t.Fatal(err)
-	}
-	bs := s.(*BedrockSummarizer)
-	bs.conn.api = api
-	return bs
 }
 
 func TestBedrockTitanRequestAndFingerprint(t *testing.T) {
@@ -515,50 +292,12 @@ func TestBedrockThrottlingRecovers(t *testing.T) {
 }
 
 func TestBedrockCredentialChainFailureIsAuth(t *testing.T) {
-	api := &fakeAPI{converse: func(int, *bedrockruntime.ConverseInput) (*bedrockruntime.ConverseOutput, error) {
-		return nil, errors.New("operation error Bedrock Runtime: Converse, get identity: get credentials: failed to refresh cached credentials, no EC2 IMDS role found")
+	api := &fakeAPI{invoke: func(int, *bedrockruntime.InvokeModelInput) (*bedrockruntime.InvokeModelOutput, error) {
+		return nil, errors.New("operation error Bedrock Runtime: InvokeModel, get identity: get credentials: failed to refresh cached credentials, no EC2 IMDS role found")
 	}}
-	_, err := bedrockSum(t, api, "anthropic.claude-haiku-4-5").Summarize(context.Background(), "s", "u", 5)
+	_, err := bedrockEmb(t, api, EmbedConfig{Model: "cohere.embed-english-v3"}).Embed(context.Background(), []string{"x"}, "")
 	if !errors.Is(err, ErrAuth) || AuthCode(err) != 0 {
 		t.Fatal(err)
-	}
-}
-
-func TestBedrockConverseRequestAndResponse(t *testing.T) {
-	api := &fakeAPI{converse: func(n int, in *bedrockruntime.ConverseInput) (*bedrockruntime.ConverseOutput, error) {
-		return &bedrockruntime.ConverseOutput{Output: &types.ConverseOutputMemberMessage{Value: types.Message{
-			Role: types.ConversationRoleAssistant, Content: []types.ContentBlock{&types.ContentBlockMemberText{Value: " a summary "}},
-		}}}, nil
-	}}
-	s := bedrockSum(t, api, "us.anthropic.claude-haiku-4-5-v1:0")
-	got, err := s.Summarize(context.Background(), "be brief", "the input", 90)
-	if err != nil || got != "a summary" {
-		t.Fatalf("%q %v", got, err)
-	}
-	in := api.converses[0]
-	sys := in.System[0].(*types.SystemContentBlockMemberText).Value
-	user := in.Messages[0].Content[0].(*types.ContentBlockMemberText).Value
-	if *in.ModelId != "us.anthropic.claude-haiku-4-5-v1:0" || sys != "be brief" || user != "the input" || in.Messages[0].Role != types.ConversationRoleUser ||
-		*in.InferenceConfig.MaxTokens != 90 || *in.InferenceConfig.Temperature != float32(0.2) || len(in.Messages) != 1 {
-		t.Fatalf("%+v", in)
-	}
-	if s.Fingerprint() != "bedrock:us.anthropic.claude-haiku-4-5-v1:0" {
-		t.Fatal(s.Fingerprint())
-	}
-}
-
-func TestBedrockSummarizeErrors(t *testing.T) {
-	for code, want := range map[string]error{"ValidationException": ErrItem, "AccessDeniedException": ErrAuth, "ThrottlingException": ErrDown, "ServiceUnavailableException": ErrDown} {
-		msg := ""
-		if code == "ValidationException" {
-			msg = "Too many input tokens: the prompt is too long"
-		}
-		api := &fakeAPI{converse: func(int, *bedrockruntime.ConverseInput) (*bedrockruntime.ConverseOutput, error) {
-			return nil, &apiErr{code, msg}
-		}}
-		if _, err := bedrockSum(t, api, "anthropic.claude-haiku-4-5").Summarize(context.Background(), "s", "u", 5); !errors.Is(err, want) {
-			t.Errorf("%s: %v, want %v", code, err, want)
-		}
 	}
 }
 
@@ -567,20 +306,14 @@ func TestBedrockHealth(t *testing.T) {
 		invoke: func(int, *bedrockruntime.InvokeModelInput) (*bedrockruntime.InvokeModelOutput, error) {
 			return &bedrockruntime.InvokeModelOutput{Body: []byte(`{"embeddings":[` + vecJSON(1024) + `]}`)}, nil
 		},
-		converse: func(int, *bedrockruntime.ConverseInput) (*bedrockruntime.ConverseOutput, error) {
-			return &bedrockruntime.ConverseOutput{Output: &types.ConverseOutputMemberMessage{Value: types.Message{Content: []types.ContentBlock{&types.ContentBlockMemberText{Value: "pong"}}}}}, nil
-		},
 	}
 	if err := bedrockEmb(t, api, EmbedConfig{Model: "cohere.embed-english-v3"}).Health(context.Background()); err != nil || len(api.invokes) != 1 {
 		t.Fatalf("%v %d", err, len(api.invokes))
 	}
-	if err := bedrockSum(t, api, "anthropic.claude-haiku-4-5").Health(context.Background()); err != nil || *api.converses[0].InferenceConfig.MaxTokens != 1 {
-		t.Fatalf("%v", err)
-	}
-	api.converse = func(int, *bedrockruntime.ConverseInput) (*bedrockruntime.ConverseOutput, error) {
+	api.invoke = func(int, *bedrockruntime.InvokeModelInput) (*bedrockruntime.InvokeModelOutput, error) {
 		return nil, &apiErr{"AccessDeniedException", "x"}
 	}
-	if err := bedrockSum(t, api, "anthropic.claude-haiku-4-5").Health(context.Background()); !errors.Is(err, ErrAuth) {
+	if err := bedrockEmb(t, api, EmbedConfig{Model: "cohere.embed-english-v3"}).Health(context.Background()); !errors.Is(err, ErrAuth) {
 		t.Fatal(err)
 	}
 }
@@ -607,9 +340,9 @@ func TestRequestRetryCancelDuringBackoffReturnsContextError(t *testing.T) {
 	// and through a driver: cancelled, not "provider down"
 	ctx2, cancel2 := context.WithCancel(context.Background())
 	go func() { time.Sleep(30 * time.Millisecond); cancel2() }()
-	_, err = anthropicSum(t, srv.URL).Summarize(ctx2, "s", "u", 1)
+	_, err = openaiEmb(t, srv.URL, EmbedConfig{Model: "m"}).Embed(ctx2, []string{"a"}, "")
 	if !errors.Is(err, context.Canceled) || errors.Is(err, ErrDown) {
-		t.Fatalf("summarize err %v", err)
+		t.Fatalf("embed err %v", err)
 	}
 }
 
@@ -652,14 +385,6 @@ func TestBedrockValidationClassification(t *testing.T) {
 		_, err := classifyBedrock(context.Background(), &apiErr{"ValidationException", msg})
 		if !errors.Is(err, want) {
 			t.Errorf("%q: %v, want %v", msg, err, want)
-		}
-	}
-}
-
-func TestDotlessHostnameIsLocal(t *testing.T) {
-	for base, want := range map[string]bool{"http://desktop:1234": true, "http://lmstudio": true, "https://api.openai.com": false} {
-		if Hosted(OpenAI, base) == want {
-			t.Errorf("Hosted(openai, %s) = %v", base, !want)
 		}
 	}
 }

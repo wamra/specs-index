@@ -1,7 +1,6 @@
-// Package provider defines the model-provider interfaces (embeddings and
-// summarization), the shared error classification and the drivers: ollama,
-// openai (any OpenAI-compatible server: LM Studio, vLLM, OpenAI, Voyage),
-// anthropic (summaries) and bedrock (embeddings and summaries).
+// Package provider defines the embedding-provider interface, the shared error
+// classification and the drivers: ollama, openai (any OpenAI-compatible server:
+// LM Studio, vLLM, OpenAI, Voyage) and bedrock.
 package provider
 
 import (
@@ -24,14 +23,6 @@ type Embedder interface {
 	// on the first Embed call. It is 0 until one of those happened.
 	Dims() int
 	// Fingerprint is "<provider>|<model>|<dims>|<doc_prefix>|v1".
-	Fingerprint() string
-	Health(ctx context.Context) error
-}
-
-// Summarizer produces a short text from a system and a user message.
-type Summarizer interface {
-	Summarize(ctx context.Context, system, user string, maxTokens int) (string, error)
-	// Fingerprint is "<provider>:<model>" (recorded in summaries.model).
 	Fingerprint() string
 	Health(ctx context.Context) error
 }

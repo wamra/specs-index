@@ -150,13 +150,6 @@ func TestBearerOnlyWhenKeyEnvSetAndNonEmpty(t *testing.T) {
 			t.Fatalf("env %q: %v auth=%q", env, err, got.Auth)
 		}
 	}
-	// summarizer too
-	var gs seen
-	ss := server(t, 200, `{"choices":[{"message":{"content":"x"}}]}`, &gs)
-	sum, _ := NewSummarizer(SummarizeConfig{Provider: OpenAI, BaseURL: ss.URL, Model: "m", APIKeyEnv: "SA_TEST_KEY"})
-	if _, err := sum.Summarize(ctx, "s", "u", 10); err != nil || gs.Auth != "Bearer sekret" {
-		t.Fatalf("%v %q", err, gs.Auth)
-	}
 }
 
 func TestErrorClassification(t *testing.T) {
@@ -167,33 +160,21 @@ func TestErrorClassification(t *testing.T) {
 	ctx := context.Background()
 	for code, want := range cases {
 		s := server(t, code, `{"error":"x"}`, nil)
-		sums := map[string]func() Summarizer{
-			Ollama: func() Summarizer { x, _ := NewSummarizer(SummarizeConfig{Provider: Ollama, BaseURL: s.URL}); return x },
-			OpenAI: func() Summarizer {
-				x, _ := NewSummarizer(SummarizeConfig{Provider: OpenAI, BaseURL: s.URL, Model: "m"})
-				return x
-			},
-		}
 		embs := map[string]Embedder{
 			Ollama: ollamaEmb(t, s.URL, "embeddinggemma"),
 			OpenAI: openaiEmb(t, s.URL, EmbedConfig{Model: "m"}),
 		}
 		for name, e := range embs {
-			if _, err := e.Embed(ctx, []string{"a"}, ""); !errors.Is(err, want) {
+			_, err := e.Embed(ctx, []string{"a"}, "")
+			if !errors.Is(err, want) {
 				t.Errorf("%s embed %d: %v, want %v", name, code, err, want)
 			}
-		}
-		for name, mk := range sums {
-			_, err := mk().Summarize(ctx, "s", "u", 10)
-			if !errors.Is(err, want) {
-				t.Errorf("%s summarize %d: %v, want %v", name, code, err, want)
-			}
 			if want == ErrAuth && (AuthCode(err) != code || !IsSystemic(err) || errors.Is(err, ErrDown) || errors.Is(err, ErrItem)) {
-				t.Errorf("%s summarize %d: auth code %d systemic=%v", name, code, AuthCode(err), IsSystemic(err))
+				t.Errorf("%s embed %d: auth code %d systemic=%v", name, code, AuthCode(err), IsSystemic(err))
 			}
 			var ie *ItemError
 			if want == ErrItem && (!errors.As(err, &ie) || ie.Reason != fmt.Sprintf("http %d", code)) {
-				t.Errorf("%s summarize %d: reason %v", name, code, err)
+				t.Errorf("%s embed %d: reason %v", name, code, err)
 			}
 		}
 	}
@@ -207,8 +188,7 @@ func TestConnectionRefusedIsDown(t *testing.T) {
 	if _, err := ollamaEmb(t, url, "embeddinggemma").Embed(ctx, []string{"a"}, ""); !errors.Is(err, ErrDown) {
 		t.Fatal(err)
 	}
-	sum, _ := NewSummarizer(SummarizeConfig{Provider: OpenAI, BaseURL: url, Model: "m"})
-	if _, err := sum.Summarize(ctx, "s", "u", 1); !errors.Is(err, ErrDown) {
+	if _, err := openaiEmb(t, url, EmbedConfig{Model: "m"}).Embed(ctx, []string{"a"}, ""); !errors.Is(err, ErrDown) {
 		t.Fatal(err)
 	}
 	if err := ollamaEmb(t, url, "embeddinggemma").Health(ctx); !errors.Is(err, ErrDown) {
@@ -229,51 +209,6 @@ func TestMalformedResponsesAreBrokenButBisectable(t *testing.T) {
 		if !errors.Is(err, ErrBroken) || !errors.Is(err, ErrMalformed) || IsSystemic(err) {
 			t.Errorf("%s: %v", name, err)
 		}
-	}
-}
-
-func TestOllamaSummarizeRequestShape(t *testing.T) {
-	var got seen
-	s := server(t, 200, `{"message":{"content":"  hello \n"}}`, &got)
-	sum, _ := NewSummarizer(SummarizeConfig{Provider: Ollama, BaseURL: s.URL})
-	out, err := sum.Summarize(context.Background(), "SYS", "USER", 77)
-	if err != nil || out != "hello" {
-		t.Fatalf("%q %v", out, err)
-	}
-	opts := got.Body["options"].(map[string]any)
-	msgs := got.Body["messages"].([]any)
-	if got.Path != "/api/chat" || got.Body["model"] != "gemma4:e4b" || got.Body["stream"] != false || got.Body["think"] != false ||
-		got.Body["keep_alive"] != "15m" || opts["num_predict"] != float64(77) || opts["temperature"] != 0.2 ||
-		msgs[0].(map[string]any)["role"] != "system" || msgs[1].(map[string]any)["content"] != "USER" {
-		t.Fatalf("%+v", got.Body)
-	}
-	if sum.Fingerprint() != "ollama:gemma4:e4b" {
-		t.Fatal(sum.Fingerprint())
-	}
-}
-
-func TestOpenAISummarizeRequestShape(t *testing.T) {
-	var got seen
-	s := server(t, 200, `{"choices":[{"message":{"content":"done"}}]}`, &got)
-	temp := 0.5
-	sum, _ := NewSummarizer(SummarizeConfig{Provider: OpenAI, BaseURL: s.URL + "/v1", Model: "qwen", Temperature: &temp})
-	out, err := sum.Summarize(context.Background(), "SYS", "USER", 33)
-	if err != nil || out != "done" {
-		t.Fatalf("%q %v", out, err)
-	}
-	msgs := got.Body["messages"].([]any)
-	if got.Path != "/v1/chat/completions" || got.Body["model"] != "qwen" || got.Body["max_tokens"] != float64(33) || got.Body["temperature"] != 0.5 ||
-		len(msgs) != 2 || msgs[0].(map[string]any)["role"] != "system" || msgs[0].(map[string]any)["content"] != "SYS" || msgs[1].(map[string]any)["role"] != "user" {
-		t.Fatalf("%+v", got.Body)
-	}
-	if sum.Fingerprint() != "openai:qwen" {
-		t.Fatal(sum.Fingerprint())
-	}
-	// no choices: item failure
-	s2 := server(t, 200, `{"choices":[]}`, nil)
-	bad, _ := NewSummarizer(SummarizeConfig{Provider: OpenAI, BaseURL: s2.URL, Model: "m"})
-	if _, err := bad.Summarize(context.Background(), "s", "u", 1); !errors.Is(err, ErrItem) {
-		t.Fatal(err)
 	}
 }
 
@@ -344,10 +279,6 @@ func TestResolvedDefaultsAndOverrides(t *testing.T) {
 	}
 	if err := (EmbedConfig{Provider: "bedrock"}.Resolved()).Validate(); err == nil {
 		t.Fatal("unknown provider must be invalid")
-	}
-	s := SummarizeConfig{}.Resolved()
-	if s.Model != "gemma4:e4b" || s.MaxTokens != 120 || *s.Temperature != 0.2 || !*s.Enabled || s.MaxItemsPerRun != 0 {
-		t.Fatalf("%+v", s)
 	}
 }
 

@@ -229,31 +229,6 @@ func TestCloseCheckpoints(t *testing.T) {
 	}
 }
 
-func TestOpenReadOnly(t *testing.T) {
-	s, path := openTemp(t)
-	if err := s.SetMeta("k", "v"); err != nil {
-		t.Fatal(err)
-	}
-	ro, err := OpenReadOnly(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer ro.Close()
-	if v, err := ro.Meta("k"); err != nil || v != "v" {
-		t.Errorf("Meta = %q, %v", v, err)
-	}
-	if err := ro.SetMeta("k", "w"); err == nil {
-		t.Error("write succeeded on read-only store")
-	}
-	var n int
-	if err := ro.DB().QueryRow(`SELECT count(*) FROM chunk_fts WHERE chunk_fts MATCH 'x'`).Scan(&n); err != nil {
-		t.Errorf("fts on read-only: %v", err)
-	}
-	if _, err := OpenReadOnly(filepath.Join(t.TempDir(), "missing.sqlite")); err == nil {
-		t.Error("OpenReadOnly on missing file succeeded")
-	}
-}
-
 func TestPathWithSpecialChars(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "a b#c%d?e", "specs.sqlite")
 	s, err := Open(path)

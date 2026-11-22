@@ -22,8 +22,7 @@ var schemaSQL string
 
 // Store wraps the index database handle.
 type Store struct {
-	db       *sql.DB
-	readOnly bool
+	db *sql.DB
 
 	closeOnce sync.Once
 	closeErr  error
@@ -80,33 +79,15 @@ func Open(path string) (*Store, error) {
 	return &Store{db: db}, nil
 }
 
-// OpenReadOnly opens an existing index without writing to it or applying the
-// schema. It fails if the file does not exist.
-func OpenReadOnly(path string) (*Store, error) {
-	if _, err := os.Stat(path); err != nil {
-		return nil, err
-	}
-	q := url.Values{}
-	q.Add("mode", "ro")
-	q.Add("_pragma", "busy_timeout(30000)")
-	db, err := openDB(path, q)
-	if err != nil {
-		return nil, fmt.Errorf("open %s read-only: %w", path, err)
-	}
-	return &Store{db: db, readOnly: true}, nil
-}
-
 // DB returns the underlying database handle.
 func (s *Store) DB() *sql.DB { return s.db }
 
-// Close checkpoints the WAL (TRUNCATE) on a writable store, then closes the
-// database. It is safe to call more than once.
+// Close checkpoints the WAL (TRUNCATE), then closes the database. It is safe
+// to call more than once.
 func (s *Store) Close() error {
 	s.closeOnce.Do(func() {
-		if !s.readOnly {
-			if _, err := s.db.Exec(`PRAGMA wal_checkpoint(TRUNCATE)`); err != nil {
-				s.closeErr = fmt.Errorf("checkpoint: %w", err)
-			}
+		if _, err := s.db.Exec(`PRAGMA wal_checkpoint(TRUNCATE)`); err != nil {
+			s.closeErr = fmt.Errorf("checkpoint: %w", err)
 		}
 		s.closeErr = errors.Join(s.closeErr, s.db.Close())
 	})

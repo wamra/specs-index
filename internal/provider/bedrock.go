@@ -13,7 +13,6 @@ import (
 	awshttp "github.com/aws/aws-sdk-go-v2/aws/transport/http"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/bedrockruntime"
-	"github.com/aws/aws-sdk-go-v2/service/bedrockruntime/types"
 	"github.com/aws/smithy-go"
 )
 
@@ -21,7 +20,6 @@ import (
 // inject a fake.
 type BedrockAPI interface {
 	InvokeModel(ctx context.Context, in *bedrockruntime.InvokeModelInput, optFns ...func(*bedrockruntime.Options)) (*bedrockruntime.InvokeModelOutput, error)
-	Converse(ctx context.Context, in *bedrockruntime.ConverseInput, optFns ...func(*bedrockruntime.Options)) (*bedrockruntime.ConverseOutput, error)
 }
 
 // bedrockConn builds the AWS client on first use from the default credential
@@ -313,76 +311,5 @@ func (e *BedrockEmbedder) Health(ctx context.Context) error {
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 	_, err := e.Embed(ctx, []string{"health probe"}, "")
-	return err
-}
-
-// BedrockSummarizer summarizes through the Converse API with any
-// anthropic.claude-* (or us.anthropic.claude-*) model id.
-type BedrockSummarizer struct {
-	Model       string
-	Temperature float64
-	conn        bedrockConn
-}
-
-func newBedrockSummarizer(c SummarizeConfig) *BedrockSummarizer {
-	return &BedrockSummarizer{Model: c.Model, Temperature: *c.Temperature, conn: bedrockConn{region: c.Region, profile: c.Profile}}
-}
-
-func (s *BedrockSummarizer) Fingerprint() string { return Bedrock + ":" + s.Model }
-
-// Summarize sends system and user to Converse. ValidationException about the
-// input size and the request timeout are *ItemError; credentials problems are
-// ErrAuth; throttling is retried with backoff and then ErrDown.
-func (s *BedrockSummarizer) Summarize(ctx context.Context, system, user string, maxTokens int) (string, error) {
-	if maxTokens <= 0 {
-		maxTokens = DefaultMaxTokens
-	}
-	api, err := s.conn.client(ctx)
-	if err != nil {
-		return "", err
-	}
-	in := &bedrockruntime.ConverseInput{
-		ModelId: aws.String(s.Model),
-		System:  []types.SystemContentBlock{&types.SystemContentBlockMemberText{Value: system}},
-		Messages: []types.Message{{
-			Role:    types.ConversationRoleUser,
-			Content: []types.ContentBlock{&types.ContentBlockMemberText{Value: user}},
-		}},
-		InferenceConfig: &types.InferenceConfiguration{MaxTokens: aws.Int32(int32(maxTokens)), Temperature: aws.Float32(float32(s.Temperature))},
-	}
-	var out *bedrockruntime.ConverseOutput
-	err = bedrockCall(ctx, func(cctx context.Context) (err error) {
-		out, err = api.Converse(cctx, in)
-		return err
-	})
-	if err != nil {
-		var te *timeoutError
-		if errors.As(err, &te) {
-			return "", &ItemError{"timeout"}
-		}
-		return "", err
-	}
-	msg, ok := out.Output.(*types.ConverseOutputMemberMessage)
-	if !ok {
-		return "", &ItemError{"bad response"}
-	}
-	var sb strings.Builder
-	for _, b := range msg.Value.Content {
-		if t, ok := b.(*types.ContentBlockMemberText); ok {
-			sb.WriteString(t.Value)
-		}
-	}
-	return strings.TrimSpace(sb.String()), nil
-}
-
-// Health sends a one-token Converse request.
-func (s *BedrockSummarizer) Health(ctx context.Context) error {
-	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
-	defer cancel()
-	_, err := s.Summarize(ctx, "Reply with one word.", "ping", 1)
-	var ie *ItemError
-	if errors.As(err, &ie) && ie.Reason != "timeout" {
-		return nil // the service answered: reachable, authorized, model exists
-	}
 	return err
 }
