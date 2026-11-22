@@ -325,6 +325,11 @@ func TestRedactURL(t *testing.T) {
 		"user:pw@127.0.0.1:1":            "user:xxxxx@127.0.0.1:1",
 		"http://localhost:11434":         "http://localhost:11434",
 		"https://u:p@host.example/v1?q=": "https://u:xxxxx@host.example/v1?q=",
+		// no scheme, but "://" later in the value
+		"user:s3cr3tpw@example.com/x?u=http://127.0.0.1": "user:xxxxx@example.com/x?u=http://127.0.0.1",
+		"user:pw@host?x=a://b":                           "user:xxxxx@host?x=a://b",
+		"user:pw@[::1]:1/x?u=http://h":                   "user:xxxxx@[::1]:1/x?u=http://h",
+		"user:pw@[::1":                                   "(unparseable URL)",
 	} {
 		if got := RedactURL(in); got != want {
 			t.Errorf("RedactURL(%q) = %q, want %q", in, got, want)
@@ -334,6 +339,9 @@ func TestRedactURL(t *testing.T) {
 
 func TestSchemelessBaseURLIsHTTP(t *testing.T) {
 	if r := (EmbedConfig{BaseURL: "user:pw@127.0.0.1:1/"}).Resolved(); r.BaseURL != "http://user:pw@127.0.0.1:1" {
+		t.Fatalf("BaseURL = %q", r.BaseURL)
+	}
+	if r := (EmbedConfig{BaseURL: "user:pw@example.com/x?u=http://127.0.0.1"}).Resolved(); r.BaseURL != "http://user:pw@example.com/x?u=http://127.0.0.1" {
 		t.Fatalf("BaseURL = %q", r.BaseURL)
 	}
 	if r := (EmbedConfig{BaseURL: "https://h.example"}).Resolved(); r.BaseURL != "https://h.example" {

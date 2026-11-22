@@ -31,6 +31,7 @@ import (
 	"github.com/wamra/specs-index/internal/api"
 	"github.com/wamra/specs-index/internal/config"
 	"github.com/wamra/specs-index/internal/corpus"
+	"github.com/wamra/specs-index/internal/provider"
 	"github.com/wamra/specs-index/internal/store"
 )
 
@@ -289,6 +290,7 @@ func searchMode(o options) string {
 // ollamaModels lists the model names the Ollama server at base reports.
 func ollamaModels(base string) ([]string, error) {
 	c := &http.Client{Timeout: 3 * time.Second}
+	base, _ = provider.WithScheme(base) // as the tool reads it; net/http then redacts its errors
 	resp, err := c.Get(strings.TrimRight(base, "/") + "/api/tags")
 	if err != nil {
 		return nil, err

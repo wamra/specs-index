@@ -11,6 +11,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -217,6 +218,19 @@ func listed(names []string, model string) bool {
 	return false
 }
 
+var schemeRe = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9+.-]*://`)
+
+// WithScheme returns raw unchanged when it starts with a scheme ("http://",
+// "https://", ...), else "http://"+raw and added=true. A "://" later in the
+// value (in a query, say) is not a scheme. RedactURL, EmbedConfig.Resolved and
+// the cloud gate all read a base URL through it, so they agree on its host.
+func WithScheme(raw string) (s string, added bool) {
+	if schemeRe.MatchString(raw) {
+		return raw, false
+	}
+	return "http://" + raw, true
+}
+
 // RedactURL returns raw with any password in its user info replaced by
 // "xxxxx" (url.URL.Redacted), "(unparseable URL)" when it cannot be parsed and
 // "" for "". A value without a scheme ("user:pw@host:port") is read as http,
@@ -225,10 +239,7 @@ func RedactURL(raw string) string {
 	if raw == "" {
 		return ""
 	}
-	in, added := raw, false
-	if !strings.Contains(in, "://") {
-		in, added = "http://"+in, true
-	}
+	in, added := WithScheme(raw)
 	u, err := url.Parse(in)
 	if err != nil {
 		return "(unparseable URL)"

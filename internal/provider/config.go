@@ -3,7 +3,6 @@ package provider
 import (
 	"fmt"
 	"os"
-	"strings"
 )
 
 // Provider names.
@@ -69,10 +68,10 @@ func (c EmbedConfig) Resolved() EmbedConfig {
 		c.BaseURL = defaultBase(c.Provider)
 	}
 	c.BaseURL = trimBase(c.BaseURL)
-	if c.BaseURL != "" && !strings.Contains(c.BaseURL, "://") {
+	if c.BaseURL != "" {
 		// "host:port" or "user:pw@host": http, as the cloud gate reads it
 		// (without a scheme the HTTP client fails and echoes the raw value)
-		c.BaseURL = "http://" + c.BaseURL
+		c.BaseURL, _ = WithScheme(c.BaseURL)
 	}
 	if c.Model == "" && c.Provider == Ollama {
 		c.Model = DefaultEmbedModel

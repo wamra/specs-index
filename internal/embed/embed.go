@@ -174,9 +174,7 @@ func isCloud(c provider.EmbedConfig) bool {
 // loopback reports whether base names this machine: localhost, an address in
 // 127.0.0.0/8, or ::1.
 func loopback(base string) bool {
-	if !strings.Contains(base, "://") {
-		base = "http://" + base
-	}
+	base, _ = provider.WithScheme(base)
 	u, err := url.Parse(base)
 	if err != nil {
 		return false

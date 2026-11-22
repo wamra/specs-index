@@ -9,6 +9,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/wamra/specs-index/internal/api"
 )
 
 // runOrama runs config C: Orama through bench/orama/run.mjs. It checks Node,
@@ -25,10 +27,10 @@ func runOrama(o options) (Result, error) {
 	}
 	names, err := ollamaModels(o.ollama)
 	if err != nil {
-		return notRun(o, fmt.Sprintf("not run: Ollama at %s did not answer /api/tags: %v", o.ollama, err)), nil
+		return notRun(o, fmt.Sprintf("not run: Ollama at %s did not answer /api/tags: %v", api.RedactURL(o.ollama), err)), nil
 	}
 	if !hasModel(names, model) {
-		return notRun(o, fmt.Sprintf("not run: Ollama at %s is up but model %q is not listed (listed: %s); no model is pulled by this tool", o.ollama, model, strings.Join(names, ", "))), nil
+		return notRun(o, fmt.Sprintf("not run: Ollama at %s is up but model %q is not listed (listed: %s); no model is pulled by this tool", api.RedactURL(o.ollama), model, strings.Join(names, ", "))), nil
 	}
 	qs, err := LoadQueries(o.queries)
 	if err != nil {

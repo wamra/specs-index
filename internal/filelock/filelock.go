@@ -15,9 +15,18 @@ var ErrLocked = errors.New("locked by another process")
 // Lock is a held lock.
 type Lock struct{ f *os.File }
 
-// Try creates path if needed and locks it without blocking.
+// ErrSymlink is returned by Try when path is a symbolic link: following it
+// could create or lock a file anywhere.
+var ErrSymlink = errors.New("lock file is a symbolic link")
+
+// Try creates path if needed and locks it without blocking. It refuses a path
+// that is a symbolic link (Lstat first, and O_NOFOLLOW where the platform has
+// it, against a link made in between).
 func Try(path string) (*Lock, error) {
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, 0o600)
+	if fi, err := os.Lstat(path); err == nil && fi.Mode()&os.ModeSymlink != 0 {
+		return nil, ErrSymlink // the caller names the path as it shows paths
+	}
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR|noFollow, 0o600)
 	if err != nil {
 		return nil, err
 	}

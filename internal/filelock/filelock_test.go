@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -71,4 +72,25 @@ func TestOtherProcessHoldsTheLock(t *testing.T) {
 		t.Fatalf("Try after the other process exited: %v", err)
 	}
 	l.Release()
+}
+
+func TestSymlinkedLockFileIsRefused(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlinks need privileges on Windows")
+	}
+	dir := t.TempDir()
+	target := filepath.Join(t.TempDir(), "outside")
+	link := filepath.Join(dir, "x.lock")
+	if err := os.Symlink(target, link); err != nil {
+		t.Fatal(err)
+	}
+	if l, err := Try(link); !errors.Is(err, ErrSymlink) {
+		if l != nil {
+			l.Release()
+		}
+		t.Fatalf("Try on a symlinked lock file = %v, want ErrSymlink", err)
+	}
+	if _, err := os.Lstat(target); !os.IsNotExist(err) {
+		t.Errorf("the symlink target was created (%v)", err)
+	}
 }

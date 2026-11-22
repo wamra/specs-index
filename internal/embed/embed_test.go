@@ -586,3 +586,29 @@ func TestRefusalNamesWhereTheFlagExists(t *testing.T) {
 		t.Fatalf("refusal = %v; want it to say --allow-cloud applies to index or doctor", err)
 	}
 }
+
+func TestSchemelessURLWithLaterSchemeIsCloud(t *testing.T) {
+	srv := embedtest.New(8, "m")
+	defer srv.Close()
+	for _, base := range []string{
+		"user:s3cr3tpw@example.com/x?u=http://127.0.0.1",
+		"user:s3cr3tpw@example.invalid/x?u=" + srv.URL,
+	} {
+		for _, p := range []string{"ollama", "openai"} {
+			e, err := New(config.Config{Provider: config.Providers{Embed: p}, Model: "m", BaseURL: base}, false)
+			if !errors.Is(err, ErrCloudNotAllowed) || e != nil {
+				t.Errorf("%s %s: %v, want ErrCloudNotAllowed", p, base, err)
+				continue
+			}
+			if strings.Contains(err.Error(), "s3cr3tpw") {
+				t.Errorf("refusal leaks the password: %v", err)
+			}
+		}
+	}
+	if n := srv.Hits.Load(); n != 0 {
+		t.Fatalf("%d request(s) reached the server", n)
+	}
+	if loopback("user:pw@example.com/x?u=http://127.0.0.1") {
+		t.Error("loopback read the host from the query")
+	}
+}
