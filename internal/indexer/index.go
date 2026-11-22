@@ -429,7 +429,10 @@ func sha256Hex(s string) string {
 func chunkText(e model.Entity) string {
 	parts := []string{e.Key, e.Title, e.Body}
 	for _, s := range e.Steps {
-		parts = append(parts, s.Keyword+" "+s.Text)
+		// a scenario's body already holds its step lines: add only the missing ones
+		if line := s.Keyword + " " + s.Text; !strings.Contains(e.Body, line) {
+			parts = append(parts, line)
+		}
 	}
 	if len(e.Tags) > 0 {
 		parts = append(parts, strings.Join(e.Tags, " "))

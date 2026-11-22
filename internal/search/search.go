@@ -27,15 +27,17 @@ import (
 // merged by reciprocal-rank fusion, falling back to full text when the index
 // has no embeddings yet or the embedder is unreachable. vector and hybrid
 // refuse (embed.ErrFingerprintMismatch, embed.ErrNotEmbedded) rather than mix
-// embedders. K defaults to 10. Root is the workspace root used to mark stale
+// embedders; auto degrades instead and says so through Notice. K defaults to 10. Root is the workspace root used to mark stale
 // hits; when empty staleness is not checked.
 type Options struct {
 	Mode     string
 	K        int
 	Root     string
 	Embedder embed.Embedder
-	// Vectors is the vector store; nil means the vec1 table of the index.
-	Vectors vector.Store
+	// Notice, when non-nil, receives a one-line message if auto degraded to
+	// exact + full text (fingerprint mismatch, no embeddings yet, embedder
+	// down). It is left untouched otherwise.
+	Notice *string
 }
 
 // Hit is one search result. Source is exact, fts, vector or filter (a query
@@ -110,16 +112,16 @@ func Search(ctx context.Context, st *store.Store, q Query, o Options) ([]Hit, er
 	useVec := (mode == "vector" || mode == "hybrid" || mode == "auto") && o.Embedder != nil
 	var vecHits []found
 	if useVec {
-		vs := o.Vectors
-		if vs == nil {
-			vs = vector.NewVec1(st.DB())
-		}
 		var err error
-		vecHits, err = s.vector(st, o.Embedder, vs, k+len(res))
+		vecHits, err = s.vector(st, o.Embedder, vector.NewVec1(st.DB()), k+len(res))
 		switch {
 		case err == nil:
-		case mode == "auto" && (errors.Is(err, embed.ErrNotEmbedded) || errors.Is(err, provider.ErrDown)):
-			vecHits, useVec = nil, false // nothing to merge: plain full text
+		case mode == "auto" && (errors.Is(err, embed.ErrNotEmbedded) || errors.Is(err, embed.ErrFingerprintMismatch) || errors.Is(err, provider.ErrDown)):
+			// never mix vector spaces, never lose the exact hits: plain full text
+			vecHits, useVec = nil, false
+			if o.Notice != nil {
+				*o.Notice = "vector search skipped, showing exact and full-text results only: " + err.Error()
+			}
 		default:
 			return nil, err
 		}

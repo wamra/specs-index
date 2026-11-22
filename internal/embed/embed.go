@@ -123,9 +123,14 @@ func New(cfg config.Config, allowCloud bool) (Embedder, error) {
 	res := ec.Resolved()
 	cloud := isCloud(res)
 	if cloud && !allowCloud && !cfg.AllowCloud {
-		where := res.BaseURL
-		if where == "" {
-			where = "AWS"
+		where := "AWS"
+		if res.BaseURL != "" {
+			// never echo credentials embedded in the URL
+			if u, err := url.Parse(res.BaseURL); err == nil {
+				where = u.Redacted()
+			} else {
+				where = "(unparseable URL)"
+			}
 		}
 		return nil, fmt.Errorf("%w: provider %q at %s would send document text off this machine; set \"allow_cloud\": true in the config or pass --allow-cloud",
 			ErrCloudNotAllowed, res.Provider, where)
@@ -134,12 +139,29 @@ func New(cfg config.Config, allowCloud bool) (Embedder, error) {
 	if err != nil {
 		return nil, err
 	}
-	if clientHook != nil {
-		switch p := pe.(type) {
-		case *provider.OllamaEmbedder:
-			clientHook(p.HTTP)
-		case *provider.OpenAIEmbedder:
-			clientHook(p.HTTP)
+	var hc *http.Client
+	switch p := pe.(type) {
+	case *provider.OllamaEmbedder:
+		hc = p.HTTP
+	case *provider.OpenAIEmbedder:
+		hc = p.HTTP
+	}
+	if hc != nil {
+		if !allowCloud && !cfg.AllowCloud {
+			// The gate also covers redirects: a local endpoint must not be able
+			// to bounce the document text to another host.
+			hc.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+				if !loopback(req.URL.String()) {
+					return fmt.Errorf("%w: redirect to %s refused", ErrCloudNotAllowed, req.URL.Redacted())
+				}
+				if len(via) >= 10 {
+					return errors.New("stopped after 10 redirects")
+				}
+				return nil
+			}
+		}
+		if clientHook != nil {
+			clientHook(hc)
 		}
 	}
 	return &embedder{p: pe, cloud: cloud}, nil
@@ -173,7 +195,7 @@ func loopback(base string) bool {
 }
 
 func mismatch(stored, have string) error {
-	return fmt.Errorf("%w: the index was embedded with %q but the configured embedder is %q; run `index --reembed` to re-embed everything, or restore the old embedder settings",
+	return fmt.Errorf("%w: the index was embedded with %q but the configured embedder is %q; run `index --reembed` to re-embed everything, restore the old embedder settings, or search with `--mode fts` meanwhile",
 		ErrFingerprintMismatch, stored, have)
 }
 
@@ -196,6 +218,22 @@ func CheckFingerprint(ctx context.Context, st interface{ Meta(string) (string, e
 		return mismatch(stored, have)
 	}
 	return nil
+}
+
+// Stored returns the fingerprint and vector size the index is pinned to
+// ("" and 0 before the first embedding).
+func Stored(ctx context.Context, st interface{ Meta(string) (string, error) }) (fingerprint string, dims int, err error) {
+	if fingerprint, err = st.Meta(metaFingerprint); err != nil {
+		return "", 0, err
+	}
+	d, err := st.Meta(metaDims)
+	if err != nil {
+		return "", 0, err
+	}
+	if d != "" {
+		dims, _ = strconv.Atoi(d)
+	}
+	return fingerprint, dims, nil
 }
 
 // Store is the part of *store.Store that embed uses.

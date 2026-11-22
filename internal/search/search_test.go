@@ -522,13 +522,15 @@ func TestFingerprintMismatchRefusesVectorSearch(t *testing.T) {
 	_, st := indexedCorpus(t)
 	_, srv := embedded(t, st, "embeddinggemma")
 	other := newEmbedder(t, srv, "other-model")
-	for _, mode := range []string{"vector", "hybrid", "auto"} {
+	for _, mode := range []string{"vector", "hybrid"} {
 		_, err := searchWith(t, st, other, "bulk upload", mode, 5)
 		if !errors.Is(err, embed.ErrFingerprintMismatch) {
 			t.Fatalf("%s: err = %v, want ErrFingerprintMismatch", mode, err)
 		}
-		if !strings.Contains(err.Error(), "index --reembed") {
-			t.Errorf("%s: error does not name `index --reembed`: %v", mode, err)
+		for _, want := range []string{"index --reembed", "--mode fts"} {
+			if !strings.Contains(err.Error(), want) {
+				t.Errorf("%s: error does not name `%s`: %v", mode, want, err)
+			}
 		}
 	}
 	// full text and exact search keep working
@@ -595,5 +597,38 @@ func TestPlainText(t *testing.T) {
 	q, _ := ParseQuery(`resume "legal hold" OR upload -tag:wip -"dark mode" BRD-004`)
 	if got := plainText(q); got != "resume legal hold upload" {
 		t.Errorf("plainText = %q", got)
+	}
+}
+
+func TestAutoDegradesOnFingerprintMismatch(t *testing.T) {
+	_, st := indexedCorpus(t)
+	_, srv := embedded(t, st, "embeddinggemma")
+	other := newEmbedder(t, srv, "other-model")
+	before := srv.Requests.Load()
+	q, _ := ParseQuery("BRD-013 upload")
+	var notice string
+	hits, err := Search(context.Background(), st, q, Options{Mode: "auto", K: 10, Embedder: other, Notice: &notice})
+	if err != nil {
+		t.Fatalf("auto under a mismatch: %v", err)
+	}
+	if len(hits) < 2 || hits[0].Key != "BRD-013" || hits[0].Source != "exact" {
+		t.Fatalf("hits = %v, want BRD-013 (exact) first then full text", keys(hits))
+	}
+	for _, h := range hits[1:] {
+		if h.Source != "fts" {
+			t.Errorf("%s has source %s; no vector hit may be mixed in", h.Key, h.Source)
+		}
+	}
+	if !strings.Contains(notice, "index --reembed") {
+		t.Errorf("notice = %q, want it to name `index --reembed`", notice)
+	}
+	if srv.Requests.Load() != before {
+		t.Error("the mismatching embedder was still asked to embed")
+	}
+	// no notice when nothing degraded, and a nil Notice is fine
+	good := newEmbedder(t, srv, "embeddinggemma")
+	notice = ""
+	if _, err := Search(context.Background(), st, q, Options{Mode: "auto", Embedder: good, Notice: &notice}); err != nil || notice != "" {
+		t.Errorf("healthy auto: err=%v notice=%q", err, notice)
 	}
 }

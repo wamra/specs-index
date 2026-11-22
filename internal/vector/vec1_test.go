@@ -56,7 +56,7 @@ func TestVec1UpsertDeleteKNN(t *testing.T) {
 	for id, v := range map[int64][]float32{
 		1: {1, 0, 0, 0},
 		2: {0.9, 0.1, 0, 0},
-		3: {0, 1, 0, 0},
+		3: {0.5, 0.5, 0, 0}, // distinct distances: a tie would make the order undefined
 		4: {0, 0, 1, 0},
 	} {
 		if err := vs.Upsert(ctx, id, v, "requirement", "draft"); err != nil {
@@ -73,8 +73,8 @@ func TestVec1UpsertDeleteKNN(t *testing.T) {
 	if ms[0].Distance > 1e-6 {
 		t.Errorf("distance to itself = %v, want ~0", ms[0].Distance)
 	}
-	if math.Abs(ms[2].Distance-1) > 1e-3 {
-		t.Errorf("distance to orthogonal = %v, want ~1 (cosine)", ms[2].Distance)
+	if want := 1 - math.Sqrt(0.5); math.Abs(ms[2].Distance-want) > 1e-3 {
+		t.Errorf("distance at 45 degrees = %v, want ~%v (cosine)", ms[2].Distance, want)
 	}
 
 	// Upsert replaces the vector.

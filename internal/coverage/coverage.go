@@ -237,6 +237,9 @@ func candidates(ctx context.Context, db *sql.DB) ([]Pair, error) {
 	if err := rows.Close(); err != nil {
 		return out, err
 	}
+	if err := rows.Err(); err != nil {
+		return out, err
+	}
 	type pairKey struct{ a, b string }
 	seen := map[pairKey]bool{}
 	for _, id := range order {

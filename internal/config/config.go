@@ -49,6 +49,24 @@ type Config struct {
 	Profile   string `json:"profile,omitempty"`
 }
 
+// EnvVar describes one environment variable the tools read.
+type EnvVar struct{ Name, Description string }
+
+// EnvVars lists the supported environment variables, for help output.
+func EnvVars() []EnvVar {
+	return []EnvVar{
+		{"SPECS_INDEX_EMBED_PROVIDER", "embedding provider: ollama, openai, bedrock or none (default ollama)"},
+		{"SPECS_INDEX_EMBED_MODEL", "embedding model name (default embeddinggemma for ollama)"},
+		{"SPECS_INDEX_EMBED_BASE_URL", "base URL of the Ollama or OpenAI-compatible server"},
+		{"SPECS_INDEX_EMBED_API_KEY_ENV", "name of the variable holding the OpenAI-compatible API key"},
+		{"SPECS_INDEX_EMBED_REGION", "AWS region for the bedrock provider"},
+		{"SPECS_INDEX_EMBED_PROFILE", "AWS shared-config profile for the bedrock provider"},
+		{"SPECS_INDEX_EMBED_DIMS", "vector size override, a positive integer"},
+		{"SPECS_INDEX_ALLOW_CLOUD", "true allows non-local embedding providers (same as --allow-cloud)"},
+		{"SPECS_INDEX_DB", "path of the index database"},
+	}
+}
+
 // Path returns the config file path, ~/.config/specs-index/config.json.
 func Path() (string, error) {
 	home, err := os.UserHomeDir()
@@ -59,8 +77,7 @@ func Path() (string, error) {
 }
 
 // Load reads the config file (a missing file is fine) and applies the
-// SPECS_INDEX_* environment variables over it: PROVIDER_EMBED, MODEL,
-// BASE_URL, ALLOW_CLOUD, DIMS, API_KEY_ENV, REGION, PROFILE.
+// environment variables listed by EnvVars over it.
 func Load() (Config, error) {
 	c := Config{Provider: Providers{Embed: DefaultProvider}}
 	p, err := Path()
@@ -80,15 +97,15 @@ func Load() (Config, error) {
 		merge(&c, f)
 	}
 	var e Config
-	e.Provider.Embed = os.Getenv("SPECS_INDEX_PROVIDER_EMBED")
-	e.Model = os.Getenv("SPECS_INDEX_MODEL")
-	e.BaseURL = os.Getenv("SPECS_INDEX_BASE_URL")
-	e.APIKeyEnv = os.Getenv("SPECS_INDEX_API_KEY_ENV")
-	e.Region = os.Getenv("SPECS_INDEX_REGION")
-	e.Profile = os.Getenv("SPECS_INDEX_PROFILE")
-	if v := os.Getenv("SPECS_INDEX_DIMS"); v != "" {
-		if e.Dims, err = strconv.Atoi(v); err != nil || e.Dims < 0 {
-			return c, fmt.Errorf("SPECS_INDEX_DIMS %q: want a positive integer", v)
+	e.Provider.Embed = os.Getenv("SPECS_INDEX_EMBED_PROVIDER")
+	e.Model = os.Getenv("SPECS_INDEX_EMBED_MODEL")
+	e.BaseURL = os.Getenv("SPECS_INDEX_EMBED_BASE_URL")
+	e.APIKeyEnv = os.Getenv("SPECS_INDEX_EMBED_API_KEY_ENV")
+	e.Region = os.Getenv("SPECS_INDEX_EMBED_REGION")
+	e.Profile = os.Getenv("SPECS_INDEX_EMBED_PROFILE")
+	if v := os.Getenv("SPECS_INDEX_EMBED_DIMS"); v != "" {
+		if e.Dims, err = strconv.Atoi(v); err != nil || e.Dims <= 0 {
+			return c, fmt.Errorf("SPECS_INDEX_EMBED_DIMS %q: want a positive integer", v)
 		}
 	}
 	merge(&c, e)

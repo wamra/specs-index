@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -368,6 +369,68 @@ func TestCloudRefusedWithoutAllow(t *testing.T) {
 	}
 	if n := srv.Hits.Load(); n != 0 {
 		t.Fatalf("%d request(s) reached the server although cloud was refused", n)
+	}
+}
+
+func TestRefusalDoesNotLeakCredentials(t *testing.T) {
+	_, err := New(config.Config{Provider: config.Providers{Embed: "openai"}, Model: "m", BaseURL: "https://user:s3cr3t@embeddings.example.test/v1"}, false)
+	if !errors.Is(err, ErrCloudNotAllowed) {
+		t.Fatalf("err = %v", err)
+	}
+	if strings.Contains(err.Error(), "s3cr3t") {
+		t.Fatalf("refusal leaks the URL password: %v", err)
+	}
+	if !strings.Contains(err.Error(), "embeddings.example.test") {
+		t.Errorf("refusal does not name the host: %v", err)
+	}
+}
+
+// TestRedirectCannotLeaveLoopback: a loopback endpoint that answers 307 to a
+// remote host must not get the document text re-POSTed there unless cloud is
+// allowed.
+func TestRedirectCannotLeaveLoopback(t *testing.T) {
+	remote := embedtest.New(768, "embeddinggemma")
+	defer remote.Close()
+	local := http.NewServeMux()
+	local.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "http://remote.example.test"+r.URL.Path, http.StatusTemporaryRedirect)
+	})
+	front := httptest.NewServer(local)
+	defer front.Close()
+	frontAddr, remoteAddr := front.Listener.Addr().String(), remote.Listener.Addr().String()
+	clientHook = func(c *http.Client) {
+		c.Transport = &http.Transport{DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			target := frontAddr
+			if strings.HasPrefix(addr, "remote.example.test") {
+				target = remoteAddr
+			}
+			return (&net.Dialer{}).DialContext(ctx, network, target)
+		}}
+	}
+	defer func() { clientHook = nil }()
+	cfg := config.Config{Provider: config.Providers{Embed: "ollama"}, Model: "embeddinggemma", BaseURL: front.URL, Dims: 768}
+
+	e, err := New(cfg, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.Embed(context.Background(), []string{"secret text"}); err == nil {
+		t.Fatal("a redirect to a remote host was followed")
+	}
+	if n := remote.Hits.Load(); n != 0 {
+		t.Fatalf("%d request(s) reached the redirect target", n)
+	}
+
+	// control: with cloud allowed the default policy follows the redirect
+	e, err = New(cfg, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.Embed(context.Background(), []string{"secret text"}); err != nil {
+		t.Fatal(err)
+	}
+	if remote.Texts.Load() != 1 {
+		t.Fatalf("control: remote saw %d texts, want 1", remote.Texts.Load())
 	}
 }
 

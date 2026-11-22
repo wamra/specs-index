@@ -2,6 +2,8 @@ package embed
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 
 	"github.com/wamra/specs-index/internal/vector"
@@ -37,6 +39,9 @@ func Infer(ctx context.Context, st Store, vs vector.Store) (int, error) {
 			return "", 0, false, err
 		}
 		err = db.QueryRowContext(ctx, `SELECT e.key FROM chunks c JOIN entities e ON e.id = c.entity_id WHERE c.id = ?`, ms[0].ID).Scan(&key)
+		if errors.Is(err, sql.ErrNoRows) { // a vector whose chunk is gone: skip it
+			return "", 0, false, nil
+		}
 		return key, ms[0].Distance, err == nil, err
 	}
 	type source struct {

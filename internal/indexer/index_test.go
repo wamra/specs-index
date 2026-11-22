@@ -691,3 +691,21 @@ func TestSymlinkToDirectlyFoundFileIndexedOnce(t *testing.T) {
 		t.Fatalf("link not indexed: %+v", rep)
 	}
 }
+
+func TestScenarioChunkHasEachStepOnce(t *testing.T) {
+	root, st := newWorkspace(t)
+	for _, d := range []string{"docs", "features"} {
+		if err := AddSource(st, root, d); err != nil {
+			t.Fatal(err)
+		}
+	}
+	runIdx(t, st, root)
+	var text string
+	if err := st.DB().QueryRow(`SELECT c.text FROM chunks c JOIN entities e ON e.id = c.entity_id
+		WHERE e.key = 'features/search.feature#Exact title wins over text matches'`).Scan(&text); err != nil {
+		t.Fatal(err)
+	}
+	if n := strings.Count(text, `When I search for "Budget"`); n != 1 {
+		t.Fatalf("step appears %d times in the chunk text:\n%s", n, text)
+	}
+}
