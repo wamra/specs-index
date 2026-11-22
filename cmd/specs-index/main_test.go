@@ -734,3 +734,32 @@ func TestStatusAndConfigRedactURLCredentialsAndDBPath(t *testing.T) {
 		contains(t, out, "127.0.0.1:1")
 	}
 }
+
+func TestIndexAfterModelChangeReportsMismatchNotFailure(t *testing.T) {
+	root := newWorkspace(t)
+	srv := embedtest.New(32, "fake", "other")
+	defer srv.Close()
+	home, _ := os.UserHomeDir()
+	writeConfig(t, home, `{"provider":{"embed":"ollama"},"model":"fake","dims":32,"base_url":"`+srv.URL+`"}`)
+	mustOK(t, "add", "--root", root, filepath.Join(root, "docs"), filepath.Join(root, "features"))
+	mustOK(t, "index", "--root", root)
+	writeConfig(t, home, `{"provider":{"embed":"ollama"},"model":"other","dims":32,"base_url":"`+srv.URL+`"}`)
+	// a text change must still reach the index
+	p := filepath.Join(root, "docs", "brd.md")
+	b, _ := os.ReadFile(p)
+	os.WriteFile(p, append(b, []byte("\nmismatchmarkerword\n")...), 0o644)
+	code, out, errw := cli(t, "index", "--root", root)
+	if code != 0 || !strings.Contains(out, "1 parsed") || !strings.Contains(out, "index --reembed") {
+		t.Errorf("index after model change: exit %d\nstdout:\n%s\nstderr:\n%s", code, out, errw)
+	}
+	var r api.IndexResult
+	code, out, _ = cli(t, "index", "--root", root, "--json")
+	if err := json.Unmarshal([]byte(out), &r); code != 0 || err != nil || r.Embedding.State != api.EmbedMismatch || !strings.Contains(r.Embedding.Note, "index --reembed") || r.Entities == 0 {
+		t.Errorf("json: exit %d err %v %+v", code, err, r)
+	}
+	contains(t, mustOK(t, "search", "--root", root, "--mode", "fts", "mismatchmarkerword"), "BRD-")
+	// explicit vector search still refuses
+	if code, _, errw := cli(t, "search", "--root", root, "--mode", "vector", "upload"); code != 1 || !strings.Contains(errw, "index --reembed") {
+		t.Errorf("vector after mismatch: exit %d %s", code, errw)
+	}
+}

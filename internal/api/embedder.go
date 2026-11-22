@@ -13,6 +13,7 @@ const (
 	EmbedOK           = "ok"            // embedder available
 	EmbedCloudBlocked = "cloud_blocked" // cloud embedder, cloud not allowed
 	EmbedUnreachable  = "unreachable"   // local embedder did not answer
+	EmbedMismatch     = "mismatch"      // the index was embedded by a different embedder
 )
 
 // SetupEmbedder builds the configured embedder. The returned state is

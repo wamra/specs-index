@@ -45,7 +45,7 @@ Common flags: `--root DIR` (project root), `--json` (print the result as JSON).
 - `--allow-cloud`: allow a cloud embedding provider for this run.
 - `--no-embed`: index text only.
 
-The first lines report how many files were scanned, parsed, unchanged, removed or failed, then the entity and edge counts, then whether embedding happened (`no embedder configured; the index is text-only`).
+The first lines report how many files were scanned, parsed, unchanged, removed or failed, then the entity and edge counts, then whether embedding happened (`no embedder configured; the index is text-only`). A cloud embedder that is not allowed, an unreachable embedder, or an embedder that differs from the one the stored vectors came from (a changed model or vector size) does not fail `index`: the text index is updated, nothing is embedded, and the `embedding:` line says why. In JSON, `embedding.state` is `none`, `ok`, `cloud_blocked`, `unreachable` or `mismatch`, and `embedding.note` holds the explanation; after a mismatch the note names `index --reembed`. Explicit `search --mode vector` and `--mode hybrid` keep refusing until then.
 
 ### trace
 

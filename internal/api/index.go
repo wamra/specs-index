@@ -32,7 +32,7 @@ type IndexFailure struct {
 }
 
 // EmbedSummary says what the embedding step did. State is none, ok,
-// cloud_blocked or unreachable; Note explains a skipped step.
+// cloud_blocked, unreachable or mismatch; Note explains a skipped step.
 type EmbedSummary struct {
 	State    string `json:"state"`
 	Embedded int    `json:"embedded"`
@@ -54,9 +54,10 @@ type IndexResult struct {
 }
 
 // Index brings the index in step with the sources, then embeds the chunks that
-// need it. A missing, cloud-blocked or unreachable embedder leaves the index
-// text-only and is reported in Embedding, not as an error. A fingerprint
-// mismatch is an error (it names `index --reembed`).
+// need it. A missing, cloud-blocked or unreachable embedder, or one that differs
+// from the embedder the stored vectors came from (state mismatch; the note
+// names `index --reembed`), leaves the text index updated and is reported in
+// Embedding, not as an error. Nothing is embedded on a mismatch.
 func Index(ctx context.Context, st *store.Store, root string, cfg config.Config, o IndexOptions) (IndexResult, error) {
 	if o.NoEmbed && (o.Reembed || o.Infer) {
 		return IndexResult{}, fmt.Errorf("%w: --no-embed cannot be combined with --reembed or --infer", ErrInvalidArgument)
@@ -127,6 +128,10 @@ func Index(ctx context.Context, st *store.Store, root string, cfg config.Config,
 		res.Embedding.State = EmbedUnreachable
 		res.Embedding.Embedded = n
 		res.Embedding.Note = fmt.Sprintf("text-only index: the embedder is unreachable (%v); run `specs-index index` again when it is up", err)
+		return res, nil
+	case errors.Is(err, embed.ErrFingerprintMismatch):
+		res.Embedding.State = EmbedMismatch
+		res.Embedding.Note = "text index updated, nothing embedded: " + err.Error()
 		return res, nil
 	case err != nil:
 		return res, err

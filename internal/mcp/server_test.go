@@ -15,6 +15,7 @@ import (
 	"github.com/wamra/specs-index/internal/api"
 	"github.com/wamra/specs-index/internal/config"
 	"github.com/wamra/specs-index/internal/corpus"
+	"github.com/wamra/specs-index/internal/embedtest"
 )
 
 type testRPCError struct {
@@ -703,5 +704,21 @@ func TestStatusRedactsURLCredentialsAndDBPath(t *testing.T) {
 	}
 	if db := os.Getenv("SPECS_INDEX_DB"); strings.Contains(text, db) {
 		t.Errorf("status exposed the absolute SPECS_INDEX_DB value:\n%s", text)
+	}
+}
+
+func TestIndexAfterModelChangeIsNotAnError(t *testing.T) {
+	root := newRoot(t)
+	srv := embedtest.New(16, "fake", "other")
+	defer srv.Close()
+	t.Setenv("SPECS_INDEX_EMBED_PROVIDER", "ollama")
+	t.Setenv("SPECS_INDEX_EMBED_BASE_URL", srv.URL)
+	t.Setenv("SPECS_INDEX_EMBED_DIMS", "16")
+	t.Setenv("SPECS_INDEX_EMBED_MODEL", "fake")
+	indexed(t, root)
+	t.Setenv("SPECS_INDEX_EMBED_MODEL", "other")
+	r := result(t, byID(t, serve(t, root, call(1, "index", "")), "1"))
+	if r.IsError || !strings.Contains(r.Content[0].Text, `"state": "mismatch"`) || !strings.Contains(r.Content[0].Text, "index --reembed") {
+		t.Errorf("index after a model change: isError %v\n%s", r.IsError, r.Content[0].Text)
 	}
 }
