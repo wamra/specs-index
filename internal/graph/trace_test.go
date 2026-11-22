@@ -2,12 +2,15 @@ package graph
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/wamra/specs-index/internal/corpus"
 	"github.com/wamra/specs-index/internal/indexer"
@@ -297,22 +300,134 @@ func TestCycleTerminates(t *testing.T) {
 	}
 }
 
+func nearOf(t *testing.T, st *store.Store, key string) []string {
+	t.Helper()
+	_, err := Trace(context.Background(), st, key, TraceOpts{})
+	var uk *UnknownKeyError
+	if !errors.As(err, &uk) {
+		t.Fatalf("%q: want *UnknownKeyError, got %v", key, err)
+	}
+	return uk.Near
+}
+
+func contains(l []string, s string) bool {
+	for _, x := range l {
+		if x == s {
+			return true
+		}
+	}
+	return false
+}
+
 func TestUnknownKey(t *testing.T) {
 	st := indexedCorpus(t)
+	// Prefix path: shortening BRD-0011 finds BRD-001.
+	if near := nearOf(t, st, "BRD-0011"); !contains(near, "BRD-001") {
+		t.Errorf("BRD-0011 near = %v", near)
+	}
+	// Only id_fts (trigram, mid-string) can match this: no key starts with "001".
+	near := nearOf(t, st, "001")
+	if !contains(near, "BRD-001") || !contains(near, "FDS-001") {
+		t.Errorf("001 near = %v", near)
+	}
+	// Lowercase also reaches the trigram index.
+	if near := nearOf(t, st, "brd-00"); !contains(near, "BRD-001") {
+		t.Errorf("brd-00 near = %v", near)
+	}
+	if near := nearOf(t, st, "zzzzzz-1"); len(near) != 0 {
+		t.Errorf("unrelated near = %v", near)
+	}
+	if near := nearOf(t, st, "BRD"); !contains(near, "BRD-001") {
+		t.Errorf("BRD near = %v", near)
+	}
 	_, err := Trace(context.Background(), st, "BRD-0011", TraceOpts{})
-	if err == nil {
-		t.Fatal("want error")
+	if err == nil || !strings.Contains(err.Error(), "near matches") {
+		t.Errorf("message: %v", err)
 	}
-	if !strings.Contains(err.Error(), "BRD-001") || !strings.Contains(err.Error(), "BRD-0011") {
-		t.Errorf("error lacks near matches: %v", err)
+}
+
+func TestKindsValidated(t *testing.T) {
+	st := indexedCorpus(t)
+	_, err := Trace(context.Background(), st, "BRD-001", TraceOpts{Kinds: []string{"parent_of", "bogus"}})
+	if err == nil || !strings.Contains(err.Error(), "bogus") || !strings.Contains(err.Error(), "conflicts_with") {
+		t.Errorf("err = %v", err)
 	}
-	_, err = Trace(context.Background(), st, "zzzzzz-1", TraceOpts{})
-	if err == nil || strings.Contains(err.Error(), "BRD") {
-		t.Errorf("unrelated key: %v", err)
+	n, err := Trace(context.Background(), st, "BRD-005", TraceOpts{Depth: 1, Kinds: []string{"parent_of", "parent_of"}})
+	if err != nil {
+		t.Fatal(err)
 	}
-	_, err = Trace(context.Background(), st, "BRD", TraceOpts{})
-	if err == nil || !strings.Contains(err.Error(), "BRD-001") {
-		t.Errorf("prefix key: %v", err)
+	if len(n.Children) != 2 {
+		t.Errorf("duplicate kinds not de-duplicated: %d children", len(n.Children))
+	}
+}
+
+func count(n *Node) int {
+	c := 1
+	for _, ch := range n.Children {
+		c += count(ch)
+	}
+	return c
+}
+
+func TestDiamondSecondOccurrenceIsRepeat(t *testing.T) {
+	st := emptyStore(t, []string{"A-1", "B-1", "B-2", "C-1", "D-1"}, [][3]string{
+		{"A-1", "B-1", "parent_of"}, {"A-1", "B-2", "parent_of"},
+		{"B-1", "C-1", "parent_of"}, {"B-2", "C-1", "parent_of"}, {"C-1", "D-1", "parent_of"},
+	})
+	n, err := Trace(context.Background(), st, "A-1", TraceOpts{Depth: 10})
+	if err != nil {
+		t.Fatal(err)
+	}
+	b1, b2 := n.Children[0], n.Children[1]
+	if len(b1.Children) != 1 || b1.Children[0].Repeat || len(b1.Children[0].Children) != 1 {
+		t.Errorf("first C should expand: %+v", b1.Children)
+	}
+	if len(b2.Children) != 1 || !b2.Children[0].Repeat || len(b2.Children[0].Children) != 0 {
+		t.Errorf("second C should be Repeat, unexpanded: %+v", b2.Children)
+	}
+	if got := count(n); got != 6 {
+		t.Errorf("node count %d, want 6", got)
+	}
+	// Reachable set still complete.
+	if got := keySet(n); !eq(got, []string{"A-1", "B-1", "B-2", "C-1", "D-1"}) {
+		t.Errorf("keys %v", got)
+	}
+}
+
+func TestLadderIsLinear(t *testing.T) {
+	const layers = 30
+	keys := []string{"R-0"}
+	var edges [][3]string
+	prev := []string{"R-0"}
+	for l := 1; l <= layers; l++ {
+		cur := []string{fmt.Sprintf("L-%d", 2*l-1), fmt.Sprintf("L-%d", 2*l)}
+		keys = append(keys, cur...)
+		for _, p := range prev {
+			for _, c := range cur {
+				edges = append(edges, [3]string{p, c, "parent_of"})
+			}
+		}
+		prev = cur
+	}
+	st := emptyStore(t, keys, edges)
+	for _, dir := range []string{"down", "up", "both"} {
+		start := time.Now()
+		n, err := Trace(context.Background(), st, "R-0", TraceOpts{Direction: dir, Depth: 50})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if el := time.Since(start); el > 5*time.Second {
+			t.Errorf("%s took %v", dir, el)
+		}
+		if dir == "down" {
+			// nodes: root + 2 per layer, plus one Repeat entry per extra incoming edge.
+			if got, max := count(n), 1+len(edges); got > max || got < len(keys) {
+				t.Errorf("node count %d, want between %d and %d", got, len(keys), max)
+			}
+			if got := keySet(n); len(got) != len(keys) {
+				t.Errorf("reachable %d of %d", len(got), len(keys))
+			}
+		}
 	}
 }
 

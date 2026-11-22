@@ -37,8 +37,10 @@ type TraceOpts struct {
 // Via is empty on the root; otherwise "<kind> forward" when the edge was
 // followed from its stored source to its stored target, or "<kind> reversed"
 // when followed target to source. Explicit is false only for nodes reached over
-// an inferred edge. Repeat marks a node already on the path from the root: it
-// is shown once more and not expanded. Missing marks an edge end that no
+// an inferred edge. Repeat marks a key already reached earlier in the same walk
+// direction (breadth-first, so at its shallowest depth), whether through a cycle
+// or a diamond: it is listed again but not expanded, which keeps output and
+// queries linear in nodes and edges. Missing marks an edge end that no
 // entity defines (Type, Title and Path are then empty). Path and Line locate
 // the entity itself.
 type Node struct {
@@ -84,6 +86,19 @@ func Trace(ctx context.Context, st *store.Store, key string, o TraceOpts) (*Node
 	if w.maxDeep <= 0 {
 		w.maxDeep = DefaultDepth
 	}
+	valid := map[string]bool{"parent_of": true, "implements": true, "verified_by": true, "depends_on": true, "conflicts_with": true, "references": true}
+	var kinds []string
+	seenKind := map[string]bool{}
+	for _, k := range w.kinds {
+		if !valid[k] {
+			return nil, fmt.Errorf("unknown edge kind %q (valid: parent_of, implements, verified_by, depends_on, conflicts_with, references)", k)
+		}
+		if !seenKind[k] {
+			seenKind[k] = true
+			kinds = append(kinds, k)
+		}
+	}
+	w.kinds = kinds
 	dirs := []bool{true} // true = down
 	switch o.Direction {
 	case "", "down":
@@ -108,7 +123,7 @@ func Trace(ctx context.Context, st *store.Store, key string, o TraceOpts) (*Node
 	n := *root
 	n.Explicit = true
 	for _, down := range dirs {
-		kids, err := w.children(ctx, key, down, 1, map[string]bool{key: true})
+		kids, err := w.children(ctx, key, down)
 		if err != nil {
 			return nil, err
 		}
@@ -183,42 +198,54 @@ func (w *walker) steps(ctx context.Context, key string, down bool) ([]step, erro
 	return out, nil
 }
 
-func (w *walker) children(ctx context.Context, key string, down bool, depth int, path map[string]bool) ([]*Node, error) {
-	steps, err := w.steps(ctx, key, down)
-	if err != nil {
-		return nil, err
+// children expands the tree below key breadth-first, so a node is first
+// reached (and expanded) at its shallowest depth. A key already reached in this
+// walk, by a cycle or by another path, is emitted again with Repeat and no
+// children; queries and output are linear in nodes and edges.
+func (w *walker) children(ctx context.Context, key string, down bool) ([]*Node, error) {
+	type item struct {
+		n     *Node
+		depth int
 	}
-	var out []*Node
-	for _, s := range steps {
-		t, err := w.entity(ctx, s.other)
+	visited := map[string]bool{key: true}
+	rootKids := &Node{}
+	queue := []item{{rootKids, 0}}
+	// rootKids is a holder; the root's key is expanded first.
+	keys := map[*Node]string{rootKids: key}
+	for len(queue) > 0 {
+		it := queue[0]
+		queue = queue[1:]
+		steps, err := w.steps(ctx, keys[it.n], down)
 		if err != nil {
 			return nil, err
 		}
-		n := &Node{Key: s.other, Explicit: s.explicit, Via: s.kind + " forward"}
-		if !s.forward {
-			n.Via = s.kind + " reversed"
-		}
-		if t == nil {
-			n.Missing = true
-		} else {
-			n.Type, n.Title, n.Path, n.Line = t.Type, t.Title, t.Path, t.Line
-		}
-		out = append(out, n)
-		if path[s.other] {
-			n.Repeat = true
-			continue
-		}
-		if depth >= w.maxDeep {
-			continue
-		}
-		path[s.other] = true
-		n.Children, err = w.children(ctx, s.other, down, depth+1, path)
-		delete(path, s.other)
-		if err != nil {
-			return nil, err
+		for _, s := range steps {
+			t, err := w.entity(ctx, s.other)
+			if err != nil {
+				return nil, err
+			}
+			n := &Node{Key: s.other, Explicit: s.explicit, Via: s.kind + " forward"}
+			if !s.forward {
+				n.Via = s.kind + " reversed"
+			}
+			if t == nil {
+				n.Missing = true
+			} else {
+				n.Type, n.Title, n.Path, n.Line = t.Type, t.Title, t.Path, t.Line
+			}
+			it.n.Children = append(it.n.Children, n)
+			if visited[s.other] {
+				n.Repeat = true
+				continue
+			}
+			visited[s.other] = true
+			if it.depth+1 < w.maxDeep {
+				keys[n] = s.other
+				queue = append(queue, item{n, it.depth + 1})
+			}
 		}
 	}
-	return out, nil
+	return rootKids.Children, nil
 }
 
 // near returns up to 10 keys close to a key that does not exist: id_fts
