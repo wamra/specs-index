@@ -1,0 +1,1628 @@
+{
+ "entities": [
+  {
+   "key": "BRD-001",
+   "type": "requirement",
+   "path": "docs/brd.md",
+   "start_line": 7,
+   "end_line": 10,
+   "title": "Document portal platform"
+  },
+  {
+   "key": "BRD-002",
+   "type": "requirement",
+   "path": "docs/brd.md",
+   "start_line": 12,
+   "end_line": 16,
+   "title": "Document upload"
+  },
+  {
+   "key": "BRD-003",
+   "type": "requirement",
+   "path": "docs/brd.md",
+   "start_line": 18,
+   "end_line": 23,
+   "title": "Bulk upload"
+  },
+  {
+   "key": "BRD-004",
+   "type": "requirement",
+   "path": "docs/brd.md",
+   "start_line": 25,
+   "end_line": 29,
+   "title": "Upload resume"
+  },
+  {
+   "key": "BRD-005",
+   "type": "requirement",
+   "path": "docs/brd.md",
+   "start_line": 31,
+   "end_line": 35,
+   "title": "Document search"
+  },
+  {
+   "key": "BRD-006",
+   "type": "requirement",
+   "path": "docs/brd.md",
+   "start_line": 37,
+   "end_line": 41,
+   "title": "Full-text search"
+  },
+  {
+   "key": "BRD-007",
+   "type": "requirement",
+   "path": "docs/brd.md",
+   "start_line": 43,
+   "end_line": 48,
+   "title": "Search filters"
+  },
+  {
+   "key": "BRD-008",
+   "type": "requirement",
+   "path": "docs/brd.md",
+   "start_line": 50,
+   "end_line": 54,
+   "title": "Version history"
+  },
+  {
+   "key": "BRD-009",
+   "type": "requirement",
+   "path": "docs/brd.md",
+   "start_line": 56,
+   "end_line": 61,
+   "title": "Version restore"
+  },
+  {
+   "key": "BRD-010",
+   "type": "requirement",
+   "path": "docs/brd.md",
+   "start_line": 63,
+   "end_line": 67,
+   "title": "Access control"
+  },
+  {
+   "key": "BRD-011",
+   "type": "requirement",
+   "path": "docs/brd.md",
+   "start_line": 69,
+   "end_line": 73,
+   "title": "Single sign-on"
+  },
+  {
+   "key": "BRD-012",
+   "type": "requirement",
+   "path": "docs/brd.md",
+   "start_line": 75,
+   "end_line": 79,
+   "title": "Role-based permissions"
+  },
+  {
+   "key": "BRD-013",
+   "type": "requirement",
+   "path": "docs/brd.md",
+   "start_line": 81,
+   "end_line": 86,
+   "title": "Share links"
+  },
+  {
+   "key": "BRD-014",
+   "type": "requirement",
+   "path": "docs/brd.md",
+   "start_line": 88,
+   "end_line": 92,
+   "title": "Disable external sharing"
+  },
+  {
+   "key": "BRD-015",
+   "type": "requirement",
+   "path": "docs/brd.md",
+   "start_line": 94,
+   "end_line": 98,
+   "title": "Audit log"
+  },
+  {
+   "key": "BRD-016",
+   "type": "requirement",
+   "path": "docs/brd.md",
+   "start_line": 100,
+   "end_line": 104,
+   "title": "Retention policies"
+  },
+  {
+   "key": "BRD-017",
+   "type": "requirement",
+   "path": "docs/brd.md",
+   "start_line": 106,
+   "end_line": 111,
+   "title": "Legal hold"
+  },
+  {
+   "key": "BRD-018",
+   "type": "requirement",
+   "path": "docs/brd.md",
+   "start_line": 113,
+   "end_line": 117,
+   "title": "Document preview"
+  },
+  {
+   "key": "BRD-019",
+   "type": "requirement",
+   "path": "docs/brd.md",
+   "start_line": 119,
+   "end_line": 123,
+   "title": "Preview annotations"
+  },
+  {
+   "key": "BRD-020",
+   "type": "requirement",
+   "path": "docs/brd.md",
+   "start_line": 125,
+   "end_line": 135,
+   "title": "Notifications"
+  },
+  {
+   "key": "BRD-021",
+   "type": "requirement",
+   "path": "docs/brd.md",
+   "start_line": 137,
+   "end_line": 141,
+   "title": "Email digest"
+  },
+  {
+   "key": "BRD-022",
+   "type": "requirement",
+   "path": "docs/brd.md",
+   "start_line": 143,
+   "end_line": 147,
+   "title": "Export"
+  },
+  {
+   "key": "BRD-023",
+   "type": "requirement",
+   "path": "docs/brd.md",
+   "start_line": 149,
+   "end_line": 153,
+   "title": "Legacy fax intake"
+  },
+  {
+   "key": "BRD-024",
+   "type": "requirement",
+   "path": "docs/brd.md",
+   "start_line": 155,
+   "end_line": 159,
+   "title": "Accessibility"
+  },
+  {
+   "key": "BRD-025",
+   "type": "requirement",
+   "path": "docs/brd.md",
+   "start_line": 161,
+   "end_line": 166,
+   "title": "Offline mode"
+  },
+  {
+   "key": "FDS-003",
+   "type": "design",
+   "path": "docs/fds.md",
+   "start_line": 27,
+   "end_line": 28,
+   "title": "Full-text index builder"
+  },
+  {
+   "key": "FDS-005",
+   "type": "design",
+   "path": "docs/fds.md",
+   "start_line": 30,
+   "end_line": 31,
+   "title": "Search results page and ranking"
+  },
+  {
+   "key": "FDS-008",
+   "type": "design",
+   "path": "docs/fds.md",
+   "start_line": 33,
+   "end_line": 34,
+   "title": "Role permission evaluator"
+  },
+  {
+   "key": "FDS-010",
+   "type": "design",
+   "path": "docs/fds.md",
+   "start_line": 36,
+   "end_line": 37,
+   "title": "Preview renderer"
+  },
+  {
+   "key": "AC-010",
+   "type": "acceptance",
+   "path": "docs/fds.md",
+   "start_line": 41,
+   "end_line": 42,
+   "title": "Export archive checksum"
+  },
+  {
+   "key": "FDS-001",
+   "type": "design",
+   "path": "docs/fds.md",
+   "start_line": 9,
+   "end_line": 9,
+   "title": "Upload endpoint and storage"
+  },
+  {
+   "key": "FDS-002",
+   "type": "design",
+   "path": "docs/fds.md",
+   "start_line": 10,
+   "end_line": 10,
+   "title": "Chunked bulk upload with resume"
+  },
+  {
+   "key": "FDS-004",
+   "type": "design",
+   "path": "docs/fds.md",
+   "start_line": 12,
+   "end_line": 12,
+   "title": "Search filter parser"
+  },
+  {
+   "key": "FDS-006",
+   "type": "design",
+   "path": "docs/fds.md",
+   "start_line": 14,
+   "end_line": 14,
+   "title": "Version store and restore"
+  },
+  {
+   "key": "FDS-007",
+   "type": "design",
+   "path": "docs/fds.md",
+   "start_line": 15,
+   "end_line": 15,
+   "title": "Corporate identity provider connector"
+  },
+  {
+   "key": "FDS-009",
+   "type": "design",
+   "path": "docs/fds.md",
+   "start_line": 17,
+   "end_line": 17,
+   "title": "Share link service"
+  },
+  {
+   "key": "FDS-011",
+   "type": "design",
+   "path": "docs/fds.md",
+   "start_line": 19,
+   "end_line": 19,
+   "title": "Retention scheduler and holds"
+  },
+  {
+   "key": "FDS-012",
+   "type": "design",
+   "path": "docs/fds.md",
+   "start_line": 20,
+   "end_line": 20,
+   "title": "Notification and digest dispatcher"
+  },
+  {
+   "key": "FDS-013",
+   "type": "design",
+   "path": "docs/fds.md",
+   "start_line": 21,
+   "end_line": 21,
+   "title": "Folder export to archive"
+  },
+  {
+   "key": "FDS-014",
+   "type": "design",
+   "path": "docs/fds.md",
+   "start_line": 22,
+   "end_line": 22,
+   "title": "Folder export to PDF bundle"
+  },
+  {
+   "key": "FDS-015",
+   "type": "design",
+   "path": "docs/fds.md",
+   "start_line": 23,
+   "end_line": 23,
+   "title": "Accessibility checker"
+  },
+  {
+   "key": "AC-001",
+   "type": "acceptance",
+   "path": "docs/acceptance.md",
+   "start_line": 9,
+   "end_line": 9,
+   "title": "A 50 MB file uploads in under 30 seconds on the reference network."
+  },
+  {
+   "key": "AC-002",
+   "type": "acceptance",
+   "path": "docs/acceptance.md",
+   "start_line": 10,
+   "end_line": 10,
+   "title": "A bulk upload of 500 files completes and an interrupted one resumes."
+  },
+  {
+   "key": "AC-003",
+   "type": "acceptance",
+   "path": "docs/acceptance.md",
+   "start_line": 11,
+   "end_line": 11,
+   "title": "A new document is searchable within 60 seconds of upload."
+  },
+  {
+   "key": "AC-004",
+   "type": "acceptance",
+   "path": "docs/acceptance.md",
+   "start_line": 12,
+   "end_line": 12,
+   "title": "A status filter returns only documents with that status."
+  },
+  {
+   "key": "AC-005",
+   "type": "acceptance",
+   "path": "docs/acceptance.md",
+   "start_line": 13,
+   "end_line": 13,
+   "title": "The ten most recent versions are listed with author and time."
+  },
+  {
+   "key": "AC-006",
+   "type": "acceptance",
+   "path": "docs/acceptance.md",
+   "start_line": 14,
+   "end_line": 14,
+   "title": "A user without an identity provider account cannot sign in."
+  },
+  {
+   "key": "AC-007",
+   "type": "acceptance",
+   "path": "docs/acceptance.md",
+   "start_line": 15,
+   "end_line": 15,
+   "title": "A viewer is refused when trying to edit."
+  },
+  {
+   "key": "AC-008",
+   "type": "acceptance",
+   "path": "docs/acceptance.md",
+   "start_line": 16,
+   "end_line": 16,
+   "title": "An expired share link returns a not-found page."
+  },
+  {
+   "key": "AC-009",
+   "type": "acceptance",
+   "path": "docs/acceptance.md",
+   "start_line": 17,
+   "end_line": 17,
+   "title": "A document past retention is archived the next night."
+  },
+  {
+   "key": "AC-010",
+   "type": "acceptance",
+   "path": "docs/acceptance.md",
+   "start_line": 18,
+   "end_line": 18,
+   "title": "The exported archive contains a checksum file."
+  },
+  {
+   "key": "features/upload.feature#Document upload",
+   "type": "feature",
+   "path": "features/upload.feature",
+   "start_line": 1,
+   "end_line": 32,
+   "title": "Document upload"
+  },
+  {
+   "key": "features/upload.feature#Upload a single document",
+   "type": "scenario",
+   "path": "features/upload.feature",
+   "start_line": 4,
+   "end_line": 8,
+   "title": "Upload a single document",
+   "step_lines": [
+    6,
+    7,
+    8
+   ]
+  },
+  {
+   "key": "features/upload.feature#Reject an oversized file",
+   "type": "scenario",
+   "path": "features/upload.feature",
+   "start_line": 10,
+   "end_line": 15,
+   "title": "Reject an oversized file",
+   "step_lines": [
+    12,
+    13,
+    14,
+    15
+   ]
+  },
+  {
+   "key": "features/upload.feature#Reject unsupported file types",
+   "type": "scenario",
+   "path": "features/upload.feature",
+   "start_line": 17,
+   "end_line": 27,
+   "title": "Reject unsupported file types",
+   "step_lines": [
+    19,
+    20,
+    21
+   ]
+  },
+  {
+   "key": "features/upload.feature#Show progress while a file uploads",
+   "type": "scenario",
+   "path": "features/upload.feature",
+   "start_line": 29,
+   "end_line": 32,
+   "title": "Show progress while a file uploads",
+   "step_lines": [
+    30,
+    31,
+    32
+   ]
+  },
+  {
+   "key": "features/bulk_upload.feature#Bulk upload",
+   "type": "feature",
+   "path": "features/bulk_upload.feature",
+   "start_line": 1,
+   "end_line": 23,
+   "title": "Bulk upload"
+  },
+  {
+   "key": "features/bulk_upload.feature#Upload a folder of documents",
+   "type": "scenario",
+   "path": "features/bulk_upload.feature",
+   "start_line": 8,
+   "end_line": 11,
+   "title": "Upload a folder of documents",
+   "step_lines": [
+    10,
+    11
+   ]
+  },
+  {
+   "key": "features/bulk_upload.feature#Resume an interrupted upload",
+   "type": "scenario",
+   "path": "features/bulk_upload.feature",
+   "start_line": 13,
+   "end_line": 18,
+   "title": "Resume an interrupted upload",
+   "step_lines": [
+    15,
+    16,
+    17,
+    18
+   ]
+  },
+  {
+   "key": "features/bulk_upload.feature#Skip duplicates in a batch",
+   "type": "scenario",
+   "path": "features/bulk_upload.feature",
+   "start_line": 20,
+   "end_line": 23,
+   "title": "Skip duplicates in a batch",
+   "step_lines": [
+    21,
+    22,
+    23
+   ]
+  },
+  {
+   "key": "features/search.feature#Document search",
+   "type": "feature",
+   "path": "features/search.feature",
+   "start_line": 1,
+   "end_line": 30,
+   "title": "Document search"
+  },
+  {
+   "key": "features/search.feature#Exact title wins over text matches",
+   "type": "scenario",
+   "path": "features/search.feature",
+   "start_line": 4,
+   "end_line": 8,
+   "title": "Exact title wins over text matches",
+   "step_lines": [
+    6,
+    7,
+    8
+   ]
+  },
+  {
+   "key": "features/search.feature#Filter results by status",
+   "type": "scenario",
+   "path": "features/search.feature",
+   "start_line": 10,
+   "end_line": 14,
+   "title": "Filter results by status",
+   "step_lines": [
+    12,
+    13,
+    14
+   ]
+  },
+  {
+   "key": "features/search.feature#Excluded tag hides matching results",
+   "type": "scenario",
+   "path": "features/search.feature",
+   "start_line": 16,
+   "end_line": 20,
+   "title": "Excluded tag hides matching results",
+   "step_lines": [
+    18,
+    19,
+    20
+   ]
+  },
+  {
+   "key": "features/search.feature#Show a message when nothing matches",
+   "type": "scenario",
+   "path": "features/search.feature",
+   "start_line": 22,
+   "end_line": 25,
+   "title": "Show a message when nothing matches",
+   "step_lines": [
+    24,
+    25
+   ]
+  },
+  {
+   "key": "features/search.feature#Search inside one folder",
+   "type": "scenario",
+   "path": "features/search.feature",
+   "start_line": 27,
+   "end_line": 30,
+   "title": "Search inside one folder",
+   "step_lines": [
+    28,
+    29,
+    30
+   ]
+  },
+  {
+   "key": "features/versions.feature#Version history",
+   "type": "feature",
+   "path": "features/versions.feature",
+   "start_line": 1,
+   "end_line": 30,
+   "title": "Version history"
+  },
+  {
+   "key": "features/versions.feature#List the versions of a document",
+   "type": "scenario",
+   "path": "features/versions.feature",
+   "start_line": 4,
+   "end_line": 8,
+   "title": "List the versions of a document",
+   "step_lines": [
+    6,
+    7,
+    8
+   ]
+  },
+  {
+   "key": "SCN-101",
+   "type": "scenario",
+   "path": "features/versions.feature",
+   "start_line": 13,
+   "end_line": 18,
+   "title": "Editor restores an earlier version",
+   "step_lines": [
+    15,
+    16,
+    17,
+    18
+   ]
+  },
+  {
+   "key": "features/versions.feature#Viewer cannot restore a version",
+   "type": "scenario",
+   "path": "features/versions.feature",
+   "start_line": 20,
+   "end_line": 23,
+   "title": "Viewer cannot restore a version",
+   "step_lines": [
+    21,
+    22,
+    23
+   ]
+  },
+  {
+   "key": "features/versions.feature#Restoring creates a new version",
+   "type": "scenario",
+   "path": "features/versions.feature",
+   "start_line": 25,
+   "end_line": 30,
+   "title": "Restoring creates a new version",
+   "step_lines": [
+    27,
+    28,
+    29,
+    30
+   ]
+  },
+  {
+   "key": "features/access.feature#Access control",
+   "type": "feature",
+   "path": "features/access.feature",
+   "start_line": 1,
+   "end_line": 23,
+   "title": "Access control"
+  },
+  {
+   "key": "SCN-102",
+   "type": "scenario",
+   "path": "features/access.feature",
+   "start_line": 3,
+   "end_line": 7,
+   "title": "Sign in through the corporate identity provider",
+   "step_lines": [
+    5,
+    6,
+    7
+   ]
+  },
+  {
+   "key": "features/access.feature#Viewer cannot edit a document",
+   "type": "scenario",
+   "path": "features/access.feature",
+   "start_line": 9,
+   "end_line": 13,
+   "title": "Viewer cannot edit a document",
+   "step_lines": [
+    11,
+    12,
+    13
+   ]
+  },
+  {
+   "key": "features/access.feature#Admin assigns a role to a group",
+   "type": "scenario",
+   "path": "features/access.feature",
+   "start_line": 15,
+   "end_line": 19,
+   "title": "Admin assigns a role to a group",
+   "step_lines": [
+    17,
+    18,
+    19
+   ]
+  },
+  {
+   "key": "features/access.feature#Warn before a session times out",
+   "type": "scenario",
+   "path": "features/access.feature",
+   "start_line": 21,
+   "end_line": 23,
+   "title": "Warn before a session times out",
+   "step_lines": [
+    22,
+    23
+   ]
+  },
+  {
+   "key": "features/sharing.feature#Share links",
+   "type": "feature",
+   "path": "features/sharing.feature",
+   "start_line": 1,
+   "end_line": 25,
+   "title": "Share links"
+  },
+  {
+   "key": "features/sharing.feature#Create an expiring share link",
+   "type": "scenario",
+   "path": "features/sharing.feature",
+   "start_line": 4,
+   "end_line": 8,
+   "title": "Create an expiring share link",
+   "step_lines": [
+    6,
+    7,
+    8
+   ]
+  },
+  {
+   "key": "features/sharing.feature#Revoke a share link",
+   "type": "scenario",
+   "path": "features/sharing.feature",
+   "start_line": 10,
+   "end_line": 14,
+   "title": "Revoke a share link",
+   "step_lines": [
+    12,
+    13,
+    14
+   ]
+  },
+  {
+   "key": "features/sharing.feature#Disabled external sharing blocks new links",
+   "type": "scenario",
+   "path": "features/sharing.feature",
+   "start_line": 16,
+   "end_line": 20,
+   "title": "Disabled external sharing blocks new links",
+   "step_lines": [
+    18,
+    19,
+    20
+   ]
+  },
+  {
+   "key": "features/sharing.feature#Share link opens a read-only preview",
+   "type": "scenario",
+   "path": "features/sharing.feature",
+   "start_line": 22,
+   "end_line": 25,
+   "title": "Share link opens a read-only preview",
+   "step_lines": [
+    23,
+    24,
+    25
+   ]
+  },
+  {
+   "key": "features/lifecycle.feature#Retention and holds",
+   "type": "feature",
+   "path": "features/lifecycle.feature",
+   "start_line": 1,
+   "end_line": 20,
+   "title": "Retention and holds"
+  },
+  {
+   "key": "features/lifecycle.feature#Retention expiry archives a document",
+   "type": "scenario",
+   "path": "features/lifecycle.feature",
+   "start_line": 4,
+   "end_line": 8,
+   "title": "Retention expiry archives a document",
+   "step_lines": [
+    6,
+    7,
+    8
+   ]
+  },
+  {
+   "key": "features/lifecycle.feature#Legal hold blocks deletion",
+   "type": "scenario",
+   "path": "features/lifecycle.feature",
+   "start_line": 10,
+   "end_line": 14,
+   "title": "Legal hold blocks deletion",
+   "step_lines": [
+    12,
+    13,
+    14
+   ]
+  },
+  {
+   "key": "features/lifecycle.feature#Retention report lists expiring documents",
+   "type": "scenario",
+   "path": "features/lifecycle.feature",
+   "start_line": 16,
+   "end_line": 20,
+   "title": "Retention report lists expiring documents",
+   "step_lines": [
+    18,
+    19,
+    20
+   ]
+  },
+  {
+   "key": "features/operations.feature#Preview, notification and export",
+   "type": "feature",
+   "path": "features/operations.feature",
+   "start_line": 1,
+   "end_line": 19,
+   "title": "Preview, notification and export"
+  },
+  {
+   "key": "features/operations.feature#Render a PDF preview",
+   "type": "scenario",
+   "path": "features/operations.feature",
+   "start_line": 3,
+   "end_line": 7,
+   "title": "Render a PDF preview",
+   "step_lines": [
+    5,
+    6,
+    7
+   ]
+  },
+  {
+   "key": "features/operations.feature#Notify watchers of a new version",
+   "type": "scenario",
+   "path": "features/operations.feature",
+   "start_line": 9,
+   "end_line": 13,
+   "title": "Notify watchers of a new version",
+   "step_lines": [
+    11,
+    12,
+    13
+   ]
+  },
+  {
+   "key": "features/operations.feature#Export a folder as an archive",
+   "type": "scenario",
+   "path": "features/operations.feature",
+   "start_line": 15,
+   "end_line": 19,
+   "title": "Export a folder as an archive",
+   "step_lines": [
+    17,
+    18,
+    19
+   ]
+  }
+ ],
+ "edges": [
+  {
+   "src": "FDS-001",
+   "dst": "features/upload.feature#Upload a single document",
+   "kind": "verified_by"
+  },
+  {
+   "src": "BRD-002",
+   "dst": "features/upload.feature#Upload a single document",
+   "kind": "verified_by"
+  },
+  {
+   "src": "FDS-001",
+   "dst": "features/upload.feature#Reject an oversized file",
+   "kind": "verified_by"
+  },
+  {
+   "src": "BRD-002",
+   "dst": "features/upload.feature#Reject an oversized file",
+   "kind": "verified_by"
+  },
+  {
+   "src": "FDS-001",
+   "dst": "features/upload.feature#Reject unsupported file types",
+   "kind": "verified_by"
+  },
+  {
+   "src": "BRD-002",
+   "dst": "features/upload.feature#Reject unsupported file types",
+   "kind": "verified_by"
+  },
+  {
+   "src": "FDS-001",
+   "dst": "features/upload.feature#Show progress while a file uploads",
+   "kind": "verified_by"
+  },
+  {
+   "src": "FDS-002",
+   "dst": "features/bulk_upload.feature#Upload a folder of documents",
+   "kind": "verified_by"
+  },
+  {
+   "src": "BRD-003",
+   "dst": "features/bulk_upload.feature#Upload a folder of documents",
+   "kind": "verified_by"
+  },
+  {
+   "src": "FDS-002",
+   "dst": "features/bulk_upload.feature#Resume an interrupted upload",
+   "kind": "verified_by"
+  },
+  {
+   "src": "BRD-004",
+   "dst": "features/bulk_upload.feature#Resume an interrupted upload",
+   "kind": "verified_by"
+  },
+  {
+   "src": "FDS-002",
+   "dst": "features/bulk_upload.feature#Skip duplicates in a batch",
+   "kind": "verified_by"
+  },
+  {
+   "src": "FDS-003",
+   "dst": "features/search.feature#Exact title wins over text matches",
+   "kind": "verified_by"
+  },
+  {
+   "src": "FDS-005",
+   "dst": "features/search.feature#Exact title wins over text matches",
+   "kind": "verified_by"
+  },
+  {
+   "src": "BRD-006",
+   "dst": "features/search.feature#Exact title wins over text matches",
+   "kind": "verified_by"
+  },
+  {
+   "src": "FDS-003",
+   "dst": "features/search.feature#Filter results by status",
+   "kind": "verified_by"
+  },
+  {
+   "src": "FDS-005",
+   "dst": "features/search.feature#Filter results by status",
+   "kind": "verified_by"
+  },
+  {
+   "src": "FDS-004",
+   "dst": "features/search.feature#Filter results by status",
+   "kind": "verified_by"
+  },
+  {
+   "src": "BRD-007",
+   "dst": "features/search.feature#Filter results by status",
+   "kind": "verified_by"
+  },
+  {
+   "src": "FDS-003",
+   "dst": "features/search.feature#Excluded tag hides matching results",
+   "kind": "verified_by"
+  },
+  {
+   "src": "FDS-005",
+   "dst": "features/search.feature#Excluded tag hides matching results",
+   "kind": "verified_by"
+  },
+  {
+   "src": "BRD-007",
+   "dst": "features/search.feature#Excluded tag hides matching results",
+   "kind": "verified_by"
+  },
+  {
+   "src": "FDS-003",
+   "dst": "features/search.feature#Show a message when nothing matches",
+   "kind": "verified_by"
+  },
+  {
+   "src": "FDS-005",
+   "dst": "features/search.feature#Show a message when nothing matches",
+   "kind": "verified_by"
+  },
+  {
+   "src": "FDS-003",
+   "dst": "features/search.feature#Search inside one folder",
+   "kind": "verified_by"
+  },
+  {
+   "src": "FDS-005",
+   "dst": "features/search.feature#Search inside one folder",
+   "kind": "verified_by"
+  },
+  {
+   "src": "FDS-006",
+   "dst": "features/versions.feature#List the versions of a document",
+   "kind": "verified_by"
+  },
+  {
+   "src": "BRD-008",
+   "dst": "features/versions.feature#List the versions of a document",
+   "kind": "verified_by"
+  },
+  {
+   "src": "FDS-006",
+   "dst": "SCN-101",
+   "kind": "verified_by"
+  },
+  {
+   "src": "BRD-009",
+   "dst": "SCN-101",
+   "kind": "verified_by"
+  },
+  {
+   "src": "FDS-006",
+   "dst": "features/versions.feature#Viewer cannot restore a version",
+   "kind": "verified_by"
+  },
+  {
+   "src": "BRD-009",
+   "dst": "features/versions.feature#Viewer cannot restore a version",
+   "kind": "verified_by"
+  },
+  {
+   "src": "FDS-006",
+   "dst": "features/versions.feature#Restoring creates a new version",
+   "kind": "verified_by"
+  },
+  {
+   "src": "BRD-009",
+   "dst": "features/versions.feature#Restoring creates a new version",
+   "kind": "verified_by"
+  },
+  {
+   "src": "FDS-007",
+   "dst": "SCN-102",
+   "kind": "verified_by"
+  },
+  {
+   "src": "BRD-011",
+   "dst": "SCN-102",
+   "kind": "verified_by"
+  },
+  {
+   "src": "FDS-008",
+   "dst": "features/access.feature#Viewer cannot edit a document",
+   "kind": "verified_by"
+  },
+  {
+   "src": "BRD-012",
+   "dst": "features/access.feature#Viewer cannot edit a document",
+   "kind": "verified_by"
+  },
+  {
+   "src": "FDS-008",
+   "dst": "features/access.feature#Admin assigns a role to a group",
+   "kind": "verified_by"
+  },
+  {
+   "src": "BRD-012",
+   "dst": "features/access.feature#Admin assigns a role to a group",
+   "kind": "verified_by"
+  },
+  {
+   "src": "FDS-009",
+   "dst": "features/sharing.feature#Create an expiring share link",
+   "kind": "verified_by"
+  },
+  {
+   "src": "BRD-013",
+   "dst": "features/sharing.feature#Create an expiring share link",
+   "kind": "verified_by"
+  },
+  {
+   "src": "FDS-009",
+   "dst": "features/sharing.feature#Revoke a share link",
+   "kind": "verified_by"
+  },
+  {
+   "src": "BRD-013",
+   "dst": "features/sharing.feature#Revoke a share link",
+   "kind": "verified_by"
+  },
+  {
+   "src": "FDS-009",
+   "dst": "features/sharing.feature#Disabled external sharing blocks new links",
+   "kind": "verified_by"
+  },
+  {
+   "src": "BRD-014",
+   "dst": "features/sharing.feature#Disabled external sharing blocks new links",
+   "kind": "verified_by"
+  },
+  {
+   "src": "FDS-009",
+   "dst": "features/sharing.feature#Share link opens a read-only preview",
+   "kind": "verified_by"
+  },
+  {
+   "src": "FDS-011",
+   "dst": "features/lifecycle.feature#Retention expiry archives a document",
+   "kind": "verified_by"
+  },
+  {
+   "src": "BRD-016",
+   "dst": "features/lifecycle.feature#Retention expiry archives a document",
+   "kind": "verified_by"
+  },
+  {
+   "src": "FDS-011",
+   "dst": "features/lifecycle.feature#Legal hold blocks deletion",
+   "kind": "verified_by"
+  },
+  {
+   "src": "BRD-017",
+   "dst": "features/lifecycle.feature#Legal hold blocks deletion",
+   "kind": "verified_by"
+  },
+  {
+   "src": "FDS-011",
+   "dst": "features/lifecycle.feature#Retention report lists expiring documents",
+   "kind": "verified_by"
+  },
+  {
+   "src": "BRD-016",
+   "dst": "features/lifecycle.feature#Retention report lists expiring documents",
+   "kind": "verified_by"
+  },
+  {
+   "src": "FDS-010",
+   "dst": "features/operations.feature#Render a PDF preview",
+   "kind": "verified_by"
+  },
+  {
+   "src": "BRD-018",
+   "dst": "features/operations.feature#Render a PDF preview",
+   "kind": "verified_by"
+  },
+  {
+   "src": "FDS-012",
+   "dst": "features/operations.feature#Notify watchers of a new version",
+   "kind": "verified_by"
+  },
+  {
+   "src": "BRD-020",
+   "dst": "features/operations.feature#Notify watchers of a new version",
+   "kind": "verified_by"
+  },
+  {
+   "src": "FDS-013",
+   "dst": "features/operations.feature#Export a folder as an archive",
+   "kind": "verified_by"
+  },
+  {
+   "src": "BRD-022",
+   "dst": "features/operations.feature#Export a folder as an archive",
+   "kind": "verified_by"
+  },
+  {
+   "src": "BRD-001",
+   "dst": "BRD-002",
+   "kind": "parent_of"
+  },
+  {
+   "src": "BRD-002",
+   "dst": "BRD-003",
+   "kind": "parent_of"
+  },
+  {
+   "src": "BRD-003",
+   "dst": "BRD-004",
+   "kind": "parent_of"
+  },
+  {
+   "src": "BRD-001",
+   "dst": "BRD-005",
+   "kind": "parent_of"
+  },
+  {
+   "src": "BRD-005",
+   "dst": "BRD-006",
+   "kind": "parent_of"
+  },
+  {
+   "src": "BRD-005",
+   "dst": "BRD-007",
+   "kind": "parent_of"
+  },
+  {
+   "src": "BRD-001",
+   "dst": "BRD-008",
+   "kind": "parent_of"
+  },
+  {
+   "src": "BRD-008",
+   "dst": "BRD-009",
+   "kind": "parent_of"
+  },
+  {
+   "src": "BRD-001",
+   "dst": "BRD-010",
+   "kind": "parent_of"
+  },
+  {
+   "src": "BRD-010",
+   "dst": "BRD-011",
+   "kind": "parent_of"
+  },
+  {
+   "src": "BRD-010",
+   "dst": "BRD-012",
+   "kind": "parent_of"
+  },
+  {
+   "src": "BRD-010",
+   "dst": "BRD-013",
+   "kind": "parent_of"
+  },
+  {
+   "src": "BRD-010",
+   "dst": "BRD-014",
+   "kind": "parent_of"
+  },
+  {
+   "src": "BRD-001",
+   "dst": "BRD-015",
+   "kind": "parent_of"
+  },
+  {
+   "src": "BRD-001",
+   "dst": "BRD-016",
+   "kind": "parent_of"
+  },
+  {
+   "src": "BRD-016",
+   "dst": "BRD-017",
+   "kind": "parent_of"
+  },
+  {
+   "src": "BRD-001",
+   "dst": "BRD-018",
+   "kind": "parent_of"
+  },
+  {
+   "src": "BRD-018",
+   "dst": "BRD-019",
+   "kind": "parent_of"
+  },
+  {
+   "src": "BRD-001",
+   "dst": "BRD-020",
+   "kind": "parent_of"
+  },
+  {
+   "src": "BRD-020",
+   "dst": "BRD-021",
+   "kind": "parent_of"
+  },
+  {
+   "src": "BRD-001",
+   "dst": "BRD-022",
+   "kind": "parent_of"
+  },
+  {
+   "src": "BRD-001",
+   "dst": "BRD-023",
+   "kind": "parent_of"
+  },
+  {
+   "src": "BRD-001",
+   "dst": "BRD-024",
+   "kind": "parent_of"
+  },
+  {
+   "src": "BRD-001",
+   "dst": "BRD-025",
+   "kind": "parent_of"
+  },
+  {
+   "src": "BRD-003",
+   "dst": "BRD-002",
+   "kind": "depends_on"
+  },
+  {
+   "src": "BRD-007",
+   "dst": "BRD-006",
+   "kind": "depends_on"
+  },
+  {
+   "src": "BRD-009",
+   "dst": "BRD-008",
+   "kind": "depends_on"
+  },
+  {
+   "src": "BRD-017",
+   "dst": "BRD-016",
+   "kind": "depends_on"
+  },
+  {
+   "src": "BRD-025",
+   "dst": "BRD-099",
+   "kind": "depends_on"
+  },
+  {
+   "src": "BRD-013",
+   "dst": "BRD-014",
+   "kind": "conflicts_with"
+  },
+  {
+   "src": "BRD-012",
+   "dst": "BRD-011",
+   "kind": "references"
+  },
+  {
+   "src": "BRD-018",
+   "dst": "FDS-010",
+   "kind": "references"
+  },
+  {
+   "src": "FDS-003",
+   "dst": "FDS-005",
+   "kind": "references"
+  },
+  {
+   "src": "FDS-005",
+   "dst": "BRD-008",
+   "kind": "references"
+  },
+  {
+   "src": "FDS-001",
+   "dst": "BRD-001",
+   "kind": "implements"
+  },
+  {
+   "src": "FDS-001",
+   "dst": "BRD-002",
+   "kind": "implements"
+  },
+  {
+   "src": "FDS-002",
+   "dst": "BRD-003",
+   "kind": "implements"
+  },
+  {
+   "src": "FDS-002",
+   "dst": "BRD-004",
+   "kind": "implements"
+  },
+  {
+   "src": "FDS-003",
+   "dst": "BRD-006",
+   "kind": "implements"
+  },
+  {
+   "src": "FDS-004",
+   "dst": "BRD-007",
+   "kind": "implements"
+  },
+  {
+   "src": "FDS-005",
+   "dst": "BRD-005",
+   "kind": "implements"
+  },
+  {
+   "src": "FDS-005",
+   "dst": "BRD-006",
+   "kind": "implements"
+  },
+  {
+   "src": "FDS-005",
+   "dst": "BRD-007",
+   "kind": "implements"
+  },
+  {
+   "src": "FDS-006",
+   "dst": "BRD-008",
+   "kind": "implements"
+  },
+  {
+   "src": "FDS-006",
+   "dst": "BRD-009",
+   "kind": "implements"
+  },
+  {
+   "src": "FDS-007",
+   "dst": "BRD-010",
+   "kind": "implements"
+  },
+  {
+   "src": "FDS-007",
+   "dst": "BRD-011",
+   "kind": "implements"
+  },
+  {
+   "src": "FDS-008",
+   "dst": "BRD-012",
+   "kind": "implements"
+  },
+  {
+   "src": "FDS-009",
+   "dst": "BRD-013",
+   "kind": "implements"
+  },
+  {
+   "src": "FDS-009",
+   "dst": "BRD-014",
+   "kind": "implements"
+  },
+  {
+   "src": "FDS-010",
+   "dst": "BRD-018",
+   "kind": "implements"
+  },
+  {
+   "src": "FDS-011",
+   "dst": "BRD-016",
+   "kind": "implements"
+  },
+  {
+   "src": "FDS-011",
+   "dst": "BRD-017",
+   "kind": "implements"
+  },
+  {
+   "src": "FDS-012",
+   "dst": "BRD-020",
+   "kind": "implements"
+  },
+  {
+   "src": "FDS-012",
+   "dst": "BRD-021",
+   "kind": "implements"
+  },
+  {
+   "src": "FDS-013",
+   "dst": "BRD-022",
+   "kind": "implements"
+  },
+  {
+   "src": "FDS-014",
+   "dst": "BRD-022",
+   "kind": "implements"
+  },
+  {
+   "src": "FDS-015",
+   "dst": "BRD-024",
+   "kind": "implements"
+  },
+  {
+   "src": "FDS-015",
+   "dst": "BRD-025",
+   "kind": "implements"
+  },
+  {
+   "src": "FDS-001",
+   "dst": "AC-001",
+   "kind": "verified_by"
+  },
+  {
+   "src": "FDS-002",
+   "dst": "AC-002",
+   "kind": "verified_by"
+  },
+  {
+   "src": "FDS-003",
+   "dst": "AC-003",
+   "kind": "verified_by"
+  },
+  {
+   "src": "FDS-004",
+   "dst": "AC-004",
+   "kind": "verified_by"
+  },
+  {
+   "src": "FDS-005",
+   "dst": "AC-004",
+   "kind": "verified_by"
+  },
+  {
+   "src": "FDS-006",
+   "dst": "AC-005",
+   "kind": "verified_by"
+  },
+  {
+   "src": "FDS-007",
+   "dst": "AC-006",
+   "kind": "verified_by"
+  },
+  {
+   "src": "FDS-008",
+   "dst": "AC-007",
+   "kind": "verified_by"
+  },
+  {
+   "src": "FDS-009",
+   "dst": "AC-008",
+   "kind": "verified_by"
+  },
+  {
+   "src": "FDS-011",
+   "dst": "AC-009",
+   "kind": "verified_by"
+  },
+  {
+   "src": "FDS-013",
+   "dst": "AC-010",
+   "kind": "verified_by"
+  }
+ ],
+ "uncovered": {
+  "requirements_without_design": [
+   "BRD-015",
+   "BRD-019",
+   "BRD-023"
+  ],
+  "designs_without_scenario": [
+   "FDS-014",
+   "FDS-015"
+  ],
+  "dangling": [
+   "BRD-099"
+  ],
+  "duplicates": [
+   "AC-010"
+  ]
+ },
+ "queries": [
+  {
+   "q": "BRD-006",
+   "expect_top": [
+    "BRD-006"
+   ],
+   "expect_absent": []
+  },
+  {
+   "q": "FDS-005",
+   "expect_top": [
+    "FDS-005"
+   ],
+   "expect_absent": []
+  },
+  {
+   "q": "single sign-on identity provider",
+   "expect_top": [
+    "BRD-011"
+   ],
+   "expect_absent": [
+    "BRD-023"
+   ]
+  },
+  {
+   "q": "fax",
+   "expect_top": [
+    "BRD-023"
+   ],
+   "expect_absent": [
+    "BRD-001"
+   ]
+  },
+  {
+   "q": "daily email digest",
+   "expect_top": [
+    "BRD-021"
+   ],
+   "expect_absent": []
+  },
+  {
+   "q": "resume interrupted upload",
+   "expect_top": [
+    "BRD-004"
+   ],
+   "expect_absent": [
+    "BRD-023"
+   ]
+  },
+  {
+   "q": "status:deprecated",
+   "expect_top": [
+    "BRD-023"
+   ],
+   "expect_absent": [
+    "BRD-001",
+    "BRD-002"
+   ]
+  },
+  {
+   "q": "type:requirement -has:fds",
+   "expect_top": [
+    "BRD-015",
+    "BRD-019",
+    "BRD-023"
+   ],
+   "expect_absent": [
+    "BRD-001",
+    "BRD-002"
+   ]
+  },
+  {
+   "q": "legal hold -tag:wip",
+   "expect_top": [
+    "BRD-017"
+   ],
+   "expect_absent": [
+    "features/lifecycle.feature#Legal hold blocks deletion"
+   ]
+  },
+  {
+   "q": "viewer cannot restore a version",
+   "expect_top": [
+    "features/versions.feature#Viewer cannot restore a version"
+   ],
+   "expect_absent": []
+  },
+  {
+   "q": "type:scenario retention",
+   "expect_top": [
+    "features/lifecycle.feature#Retention expiry archives a document"
+   ],
+   "expect_absent": [
+    "BRD-016"
+   ]
+  }
+ ]
+}
