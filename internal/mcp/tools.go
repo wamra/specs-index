@@ -130,7 +130,9 @@ var tools = []tool{
 		description: "List the gaps in the indexed graph: requirements with no design, designs with no verifying scenario, scenarios linked to nothing, dangling or duplicate IDs, and conflicts. " +
 			"Only explicit links count; run index first so the result reflects the current files.",
 		readOnly: true,
-		run:      toolCoverage,
+		props: map[string]any{"no_candidates": map[string]any{"type": "boolean",
+			"description": "Skip the candidate conflicts from vector similarity (they are skipped anyway above a limit of embedded chunks; the result's candidates_note says so). Default false."}},
+		run: toolCoverage,
 	},
 	{
 		name: "status",
@@ -458,11 +460,18 @@ func toolTrace(ctx context.Context, s *server, raw json.RawMessage) (any, error)
 }
 
 func toolCoverage(ctx context.Context, s *server, raw json.RawMessage) (any, error) {
-	var a struct{}
+	var a struct {
+		NoCandidates bool `json:"no_candidates"`
+	}
 	if err := decodeArgs(raw, &a); err != nil {
 		return nil, err
 	}
-	return s.withRead(func(st *store.Store) (any, error) { return api.Coverage(ctx, st) })
+	cfg, err := s.loadConfig()
+	if err != nil {
+		return nil, err
+	}
+	o := api.CoverageOptions{NoCandidates: a.NoCandidates, Types: cfg.Types}
+	return s.withRead(func(st *store.Store) (any, error) { return api.Coverage(ctx, st, o) })
 }
 
 func toolStatus(ctx context.Context, s *server, raw json.RawMessage) (any, error) {

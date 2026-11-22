@@ -10,7 +10,9 @@ import (
 
 func cmdCoverage(args []string, out, errw io.Writer) int {
 	var c common
+	var o api.CoverageOptions
 	fs := newFlags("coverage", errw, &c)
+	fs.BoolVar(&o.NoCandidates, "no-candidates", false, "skip the candidate conflicts from vector similarity")
 	pos, code := parseInterspersed(fs, args)
 	if code >= 0 {
 		return code
@@ -18,12 +20,17 @@ func cmdCoverage(args []string, out, errw io.Writer) int {
 	if len(pos) != 0 {
 		return usageErr(errw, "coverage takes no arguments")
 	}
+	cfg, err := loadConfig()
+	if err != nil {
+		return fail(errw, err)
+	}
+	o.Types = cfg.Types
 	st, _, err := c.openExisting()
 	if err != nil {
 		return fail(errw, err)
 	}
 	defer st.Close()
-	r, err := api.Coverage(context.Background(), st)
+	r, err := api.Coverage(context.Background(), st, o)
 	if err != nil {
 		return fail(errw, err)
 	}
@@ -56,6 +63,9 @@ func cmdCoverage(args []string, out, errw io.Writer) int {
 		fmt.Fprintf(out, "  %s <-> %s  %s:%d\n", p.A, p.B, p.Path, p.Line)
 	}
 	fmt.Fprintf(out, "Candidate conflicts, from vector similarity (%d)\n", len(r.Candidates))
+	if r.CandidatesNote != "" {
+		fmt.Fprintf(out, "  note: %s\n", r.CandidatesNote)
+	}
 	for _, p := range r.Candidates {
 		fmt.Fprintf(out, "  %s ~ %s  %s:%d\n", p.A, p.B, p.Path, p.Line)
 	}

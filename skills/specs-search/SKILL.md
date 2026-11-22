@@ -66,7 +66,7 @@ Edge kinds: `parent_of`, `implements`, `verified_by`, `depends_on`, `conflicts_w
 
 ## Coverage
 
-`specs-index coverage` lists: requirements without an implementing design, designs without a verifying scenario or criterion, scenarios verifying nothing, dangling IDs (referenced but never defined), duplicate IDs, conflicting requirements, and, when an embedder is configured, candidate conflicts from vector similarity.
+`specs-index coverage` lists: requirements without an implementing design, designs without a verifying scenario or criterion, scenarios verifying nothing, dangling IDs (referenced but never defined), duplicate IDs, conflicting requirements, and, when an embedder is configured, candidate conflicts from vector similarity (skipped above 5,000 embedded chunks or with `--no-candidates`; a note says so).
 
 ## Embeddings are optional
 

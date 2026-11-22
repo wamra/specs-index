@@ -45,7 +45,8 @@ type KeyPair struct {
 
 // CoverageResult is the result of coverage. Candidates are suggestions from
 // vector similarity, never conflicts; Conflicts are explicit conflicts_with
-// pairs.
+// pairs. CandidatesNote is non-empty when the candidate scan was skipped
+// (on request, or above coverage.CandidateMaxVectors embedded chunks).
 type CoverageResult struct {
 	RequirementsWithoutDesign  []CoverageItem `json:"requirements_without_design"`
 	DesignsWithoutVerification []CoverageItem `json:"designs_without_verification"`
@@ -54,11 +55,19 @@ type CoverageResult struct {
 	Duplicates                 []DuplicateDef `json:"duplicates"`
 	Conflicts                  []KeyPair      `json:"conflicts"`
 	Candidates                 []KeyPair      `json:"candidates"`
+	CandidatesNote             string         `json:"candidates_note"`
+}
+
+// CoverageOptions are the flags of coverage. Types is the configured prefix
+// mapping (config.Config.Types).
+type CoverageOptions struct {
+	NoCandidates bool
+	Types        map[string]string
 }
 
 // Coverage reports the gaps in the indexed graph.
-func Coverage(ctx context.Context, st *store.Store) (CoverageResult, error) {
-	rep, err := coverage.Run(ctx, st)
+func Coverage(ctx context.Context, st *store.Store, o CoverageOptions) (CoverageResult, error) {
+	rep, err := coverage.Run(ctx, st, coverage.Options{NoCandidates: o.NoCandidates, Types: o.Types})
 	if err != nil {
 		return CoverageResult{}, err
 	}
@@ -84,6 +93,7 @@ func Coverage(ctx context.Context, st *store.Store) (CoverageResult, error) {
 		Duplicates:                 make([]DuplicateDef, 0, len(rep.Duplicates)),
 		Conflicts:                  pairs(rep.Conflicts),
 		Candidates:                 pairs(rep.Candidates),
+		CandidatesNote:             rep.CandidatesNote,
 	}
 	for _, d := range rep.Dangling {
 		r.Dangling = append(r.Dangling, DanglingRef{ID: d.ID, Kind: d.Kind, Referrer: d.Referrer, Side: d.Side, Path: d.Path, Line: d.Line, Mention: d.Mention})

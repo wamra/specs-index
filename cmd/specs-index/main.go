@@ -48,7 +48,7 @@ func init() {
 		"search":   {cmdSearch, "search QUERY [--mode auto|exact|fts|vector|hybrid] [--k 10]   (use -- before a query starting with -)"},
 		"show":     {cmdShow, "show KEY                   the entity with its source lines and direct edges"},
 		"trace":    {cmdTrace, "trace KEY [--direction down|up|both] [--depth 5] [--kinds a,b] [--include-inferred]"},
-		"coverage": {cmdCoverage, "coverage                    requirements, designs and scenarios with gaps; dangling, duplicate and conflicting IDs"},
+		"coverage": {cmdCoverage, "coverage [--no-candidates]  requirements, designs and scenarios with gaps; dangling, duplicate and conflicting IDs"},
 		"status":   {cmdStatus, "status                      index counts and the configured embedder"},
 		"doctor":   {cmdDoctor, "doctor                      check the index and the embedder; exit 1 on a failure"},
 		"mcp":      {cmdMCP, "mcp                         serve the tools over stdio for Claude Code (project: CLAUDE_PROJECT_DIR, else the working directory)"},

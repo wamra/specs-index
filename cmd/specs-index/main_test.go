@@ -787,3 +787,21 @@ func TestConfiguredTypesApplyToIndex(t *testing.T) {
 		t.Errorf("bad type: exit %d %s", code, errw)
 	}
 }
+
+func TestCoverageNoCandidatesAndProseIDs(t *testing.T) {
+	root := newWorkspace(t)
+	os.WriteFile(filepath.Join(root, "docs", "prose.md"), []byte("## BRD-900 Encoding\n\nText is UTF-8 and hashed with SHA-256; see FDS-998.\n"), 0o644)
+	mustOK(t, "add", "--root", root, filepath.Join(root, "docs"))
+	mustOK(t, "index", "--root", root)
+	out := mustOK(t, "coverage", "--root", root)
+	if strings.Contains(out, "UTF-8") || strings.Contains(out, "SHA-256") {
+		t.Errorf("prose IDs reported as dangling:\n%s", out)
+	}
+	contains(t, out, "FDS-998")
+	contains(t, mustOK(t, "coverage", "--root", root, "--no-candidates"), "note: candidate conflicts not computed")
+	var r api.CoverageResult
+	json.Unmarshal([]byte(mustOK(t, "coverage", "--root", root, "--no-candidates", "--json")), &r)
+	if !strings.Contains(r.CandidatesNote, "skipped") {
+		t.Errorf("json candidates_note = %q", r.CandidatesNote)
+	}
+}

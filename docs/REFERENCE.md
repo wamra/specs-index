@@ -29,7 +29,7 @@ specs-index <command> [flags]     (every command except version takes --root DIR
 | `search QUERY [--mode auto\|exact\|fts\|vector\|hybrid] [--k 10]` | Search; see the grammar below. Use `--` before a query that starts with `-`. |
 | `show KEY` | One entity with its source lines and its direct incoming and outgoing links. An unknown key is an error. |
 | `trace KEY [--direction down\|up\|both] [--depth 5] [--kinds a,b] [--include-inferred]` | Follow links from an entity. |
-| `coverage` | Gaps and ID problems (below). |
+| `coverage [--no-candidates]` | Gaps and ID problems (below). |
 | `status` | Index counts, last index time, the configured embedder and the environment variables. |
 | `doctor [--allow-cloud]` | Check the index (integrity, FTS5, vector table) and the embedder; exits 1 on a failure. Never contacts a cloud embedder unless `--allow-cloud`. |
 | `config [init]` | Show the effective configuration, or write an example config file (never overwrites an existing one). |
@@ -54,6 +54,10 @@ Direction `down` (default) follows links away from the key (requirement to desig
 ### coverage
 
 Reports, with source lines: requirements without an implementing design; designs without a verifying scenario or criterion; scenarios verifying nothing; dangling IDs (used as the target of a link but never defined); duplicate IDs (an ID defined in more than one file, or by two headings in one file); explicit conflicts (`Conflicts with`); and candidate conflicts from vector similarity (an empty list without embeddings). Only explicit links count.
+
+An ID-shaped word in prose (a `references` mention such as `UTF-8` or `SHA-256`) is reported as dangling only when its prefix is used by a defined entity or appears in the prefix mapping (`types` plus the defaults `BRD`, `FDS`, `AC`); IDs in link fields and tags are always checked.
+
+The candidate scan runs one nearest-neighbour query per embedded chunk, so its time grows with the square of the number of chunks. It is skipped above 5,000 embedded chunks (`coverage.CandidateMaxVectors`), or always with `--no-candidates`; the candidate list is then empty and a `note:` line (`candidates_note` in JSON) says why.
 
 ## Search query grammar
 
@@ -144,7 +148,7 @@ From `config.EnvVars()`:
 | `search` | `query` (required), `mode` (`auto`, `exact`, `fts`, `vector`, `hybrid`), `k` (1 to 100, default 10) | yes |
 | `show` | `key` (required) | yes |
 | `trace` | `key` (required), `direction`, `depth` (1 to 50), `kinds` (array), `include_inferred` | yes |
-| `coverage` | none | yes |
+| `coverage` | `no_candidates` (boolean) | yes |
 | `status` | none | yes |
 
 `index` has no cloud option: a request for `allow_cloud` is refused as an unknown argument. Results are the same JSON as the CLI's `--json`, as text content; failures are results with `isError` set.

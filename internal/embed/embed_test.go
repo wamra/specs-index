@@ -520,7 +520,7 @@ func TestInferStoresSuggestionsOnly(t *testing.T) {
 		t.Fatal(err)
 	}
 	explicit := count(t, st, `SELECT count(*) FROM edges WHERE explicit = 1`)
-	before, err := coverage.Run(ctx, st)
+	before, err := coverage.Run(ctx, st, coverage.Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -554,7 +554,7 @@ func TestInferStoresSuggestionsOnly(t *testing.T) {
 		t.Fatalf("%d suggestions for requirements that already have an explicit implements edge", got)
 	}
 
-	after, err := coverage.Run(ctx, st)
+	after, err := coverage.Run(ctx, st, coverage.Options{})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -304,7 +304,7 @@ func TestToolsMirrorAPI(t *testing.T) {
 	}
 	cfg, _ := config.Load()
 	ctx := context.Background()
-	cov, _ := api.Coverage(ctx, st)
+	cov, _ := api.Coverage(ctx, st, api.CoverageOptions{Types: cfg.Types})
 	stat, _ := api.Status(ctx, st, root, cfg)
 	srcs, _ := api.Sources(st)
 	st.Close()
@@ -720,5 +720,14 @@ func TestIndexAfterModelChangeIsNotAnError(t *testing.T) {
 	r := result(t, byID(t, serve(t, root, call(1, "index", "")), "1"))
 	if r.IsError || !strings.Contains(r.Content[0].Text, `"state": "mismatch"`) || !strings.Contains(r.Content[0].Text, "index --reembed") {
 		t.Errorf("index after a model change: isError %v\n%s", r.IsError, r.Content[0].Text)
+	}
+}
+
+func TestCoverageNoCandidatesArgument(t *testing.T) {
+	root := newRoot(t)
+	indexed(t, root)
+	r := result(t, byID(t, serve(t, root, call(1, "coverage", `{"no_candidates":true}`)), "1"))
+	if r.IsError || !strings.Contains(r.Content[0].Text, `"candidates_note": "candidate conflicts not computed`) {
+		t.Errorf("coverage no_candidates: %v %s", r.IsError, r.Content[0].Text)
 	}
 }

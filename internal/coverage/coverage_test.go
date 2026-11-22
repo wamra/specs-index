@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
 
 	"github.com/wamra/specs-index/internal/corpus"
@@ -112,7 +113,7 @@ func truthUnlinked(t *testing.T) []string {
 func TestCoverageMatchesTruth(t *testing.T) {
 	st := indexedCorpus(t)
 	tr, _ := corpus.LoadTruth()
-	rep, err := Run(context.Background(), st)
+	rep, err := Run(context.Background(), st, Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -163,7 +164,7 @@ func TestConflictReportedOnceWhenBothDeclare(t *testing.T) {
 	if _, err := st.DB().Exec(`INSERT INTO edges(src_key, dst_key, kind, explicit, origin) VALUES ('BRD-014','BRD-013','conflicts_with',1,'field')`); err != nil {
 		t.Fatal(err)
 	}
-	rep, err := Run(context.Background(), st)
+	rep, err := Run(context.Background(), st, Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -177,7 +178,7 @@ func TestMentionsFlaggedSeparately(t *testing.T) {
 	if _, err := st.DB().Exec(`INSERT INTO edges(src_key, dst_key, kind, doc_id, line, explicit, origin) VALUES ('BRD-018','BRD-555','references',1,3,1,'mention')`); err != nil {
 		t.Fatal(err)
 	}
-	rep, _ := Run(context.Background(), st)
+	rep, _ := Run(context.Background(), st, Options{})
 	var m, f int
 	for _, d := range rep.Dangling {
 		if d.Mention {
@@ -196,7 +197,7 @@ func TestMentionsFlaggedSeparately(t *testing.T) {
 
 func TestInferredEdgesDoNotCover(t *testing.T) {
 	st := indexedCorpus(t)
-	before, _ := Run(context.Background(), st)
+	before, _ := Run(context.Background(), st, Options{})
 	for _, q := range []string{
 		`INSERT INTO edges(src_key, dst_key, kind, explicit, confidence, origin) VALUES ('FDS-001','BRD-015','implements',0,0.9,'inferred')`,
 		`INSERT INTO edges(src_key, dst_key, kind, explicit, confidence, origin) VALUES ('FDS-014','AC-001','verified_by',0,0.9,'inferred')`,
@@ -208,7 +209,7 @@ func TestInferredEdgesDoNotCover(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	after, err := Run(context.Background(), st)
+	after, err := Run(context.Background(), st, Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -232,7 +233,7 @@ func chunkID(t *testing.T, st *store.Store, key string) int64 {
 func TestCandidatesAreNearDuplicatesWithDifferentStatus(t *testing.T) {
 	ctx := context.Background()
 	st := indexedCorpus(t)
-	r, err := Run(ctx, st)
+	r, err := Run(ctx, st, Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -260,7 +261,7 @@ func TestCandidatesAreNearDuplicatesWithDifferentStatus(t *testing.T) {
 	put("FDS-001", "design", 1, 0, 0)               // same vector, other type
 	put("FDS-002", "design", 1, 0, 0)               // same type as FDS-001, same (empty) status
 
-	r, err = Run(ctx, st)
+	r, err = Run(ctx, st, Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -274,5 +275,59 @@ func TestCandidatesAreNearDuplicatesWithDifferentStatus(t *testing.T) {
 	want := [][2]string{{"BRD-001", "BRD-004"}, {"BRD-004", "BRD-005"}}
 	if len(got) != len(want) || got[0] != want[0] || got[1] != want[1] {
 		t.Fatalf("Candidates = %v, want %v", got, want)
+	}
+}
+
+func TestMentionWithUnknownPrefixIsNotDangling(t *testing.T) {
+	ctx := context.Background()
+	st := indexedCorpus(t)
+	for _, e := range [][3]string{
+		{"UTF-8", "references", "mention"},   // prose: no entity or mapping uses UTF
+		{"FDS-999", "references", "mention"}, // FDS is used by entities
+		{"ZZ-5", "references", "mention"},    // ZZ is mapped in the config below
+		{"QQ-1", "implements", "field"},      // a link field always counts
+	} {
+		if _, err := st.DB().Exec(`INSERT INTO edges(src_key, dst_key, kind, line, explicit, origin) VALUES ('BRD-001', ?, ?, 1, 1, ?)`, e[0], e[1], e[2]); err != nil {
+			t.Fatal(err)
+		}
+	}
+	r, err := Run(ctx, st, Options{Types: map[string]string{"ZZ": "design"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]bool{}
+	for _, d := range r.Dangling {
+		got[d.ID] = true
+	}
+	for id, want := range map[string]bool{"UTF-8": false, "FDS-999": true, "ZZ-5": true, "QQ-1": true, "BRD-099": true} {
+		if got[id] != want {
+			t.Errorf("dangling %s = %v, want %v (all: %+v)", id, got[id], want, r.Dangling)
+		}
+	}
+}
+
+func TestCandidateScanSkipped(t *testing.T) {
+	ctx := context.Background()
+	st := indexedCorpus(t)
+	st.DB().Exec(`UPDATE entities SET status = 'draft' WHERE key = 'BRD-004'`)
+	vs := vector.NewVec1(st.DB())
+	for _, k := range []string{"BRD-001", "BRD-004"} {
+		if err := vs.Upsert(ctx, chunkID(t, st, k), []float32{1, 0, 0}, "requirement", ""); err != nil {
+			t.Fatal(err)
+		}
+	}
+	r, err := Run(ctx, st, Options{})
+	if err != nil || len(r.Candidates) != 1 || r.CandidatesNote != "" {
+		t.Fatalf("scan: %v %+v %q", err, r.Candidates, r.CandidatesNote)
+	}
+	r, err = Run(ctx, st, Options{NoCandidates: true})
+	if err != nil || len(r.Candidates) != 0 || r.Candidates == nil || !strings.Contains(r.CandidatesNote, "skipped") {
+		t.Fatalf("NoCandidates: %v %+v %q", err, r.Candidates, r.CandidatesNote)
+	}
+	defer func(n int) { candidateLimit = n }(candidateLimit)
+	candidateLimit = 1
+	r, err = Run(ctx, st, Options{})
+	if err != nil || len(r.Candidates) != 0 || !strings.Contains(r.CandidatesNote, "2 embedded chunks") {
+		t.Fatalf("over the limit: %v %+v %q", err, r.Candidates, r.CandidatesNote)
 	}
 }
