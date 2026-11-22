@@ -96,23 +96,55 @@
    }
   }
  },
+ "metrics_non_id": {
+  "queries": 30,
+  "recall_at_5": 0.5,
+  "mrr_at_10": 0.5,
+  "exact_id_queries": 0,
+  "exact_id_accuracy_at_1": 0,
+  "absent_violations": 0,
+  "per_category": {
+   "keyword": {
+    "queries": 16,
+    "recall_at_5": 0.9375,
+    "mrr_at_10": 0.9375,
+    "exact_id_queries": 0,
+    "exact_id_accuracy_at_1": 0,
+    "absent_violations": 0
+   },
+   "semantic": {
+    "queries": 14,
+    "recall_at_5": 0,
+    "mrr_at_10": 0,
+    "exact_id_queries": 0,
+    "exact_id_accuracy_at_1": 0,
+    "absent_violations": 0
+   }
+  }
+ },
  "latency": {
   "samples": 1060,
-  "p50_ms": 0.193,
-  "p95_ms": 0.377
+  "p50_ms": 0.192,
+  "p95_ms": 0.368
  },
  "mapping_recall": {
   "found": 129,
   "total": 129,
   "recall": 1,
-  "note": "trace over explicit edges, depth 1, both directions, all six edge kinds; independent of the embedder"
+  "note": "trace with all six edge kinds, depth 1, both directions, edge direction checked; compared with the parser's own explicit edges of the synthetic corpus; independent of the embedder"
+ },
+ "mapping_recall_default_kinds": {
+  "found": 119,
+  "total": 129,
+  "recall": 0.922481,
+  "note": "same check with trace's default edge kinds (parent_of, implements, verified_by)"
  },
  "index": {
   "size_bytes": 282624,
   "size_note": "SQLite file after WAL checkpoint, includes FTS5 and vec1 tables",
-  "parse_seconds": 0.0113
+  "parse_seconds": 0.01239
  },
- "peak_rss_bytes": 25985024,
+ "peak_rss_bytes": 26673152,
  "peak_rss_note": "ru_maxrss of the whole measured process: index build, embedding and all queries",
  "embedding_cost": {
   "usd": 0,

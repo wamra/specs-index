@@ -117,16 +117,22 @@ type Result struct {
 	LatencyNote string        `json:"latency_note,omitempty"`
 	// MetricsAll covers every query; MetricsUnfiltered excludes the "filtered"
 	// category (config C has no filter language, so only this one is comparable).
-	MetricsAll        *Metrics       `json:"metrics_all,omitempty"`
-	MetricsUnfiltered *Metrics       `json:"metrics_unfiltered,omitempty"`
-	Latency           *Latency       `json:"latency,omitempty"`
-	Mapping           *MappingRecall `json:"mapping_recall,omitempty"`
-	Index             *IndexInfo     `json:"index,omitempty"`
-	PeakRSSBytes      *int64         `json:"peak_rss_bytes,omitempty"`
-	PeakRSSNote       string         `json:"peak_rss_note,omitempty"`
-	EmbeddingCost     *Cost          `json:"embedding_cost,omitempty"`
-	PerQuery          []QueryResult  `json:"per_query,omitempty"`
-	Notes             []string       `json:"notes,omitempty"`
+	MetricsAll        *Metrics `json:"metrics_all,omitempty"`
+	MetricsUnfiltered *Metrics `json:"metrics_unfiltered,omitempty"`
+	// MetricsNonID covers only the keyword and semantic queries: no filtered
+	// query and no query that is an entity key verbatim.
+	MetricsNonID *Metrics `json:"metrics_non_id,omitempty"`
+	Latency      *Latency `json:"latency,omitempty"`
+	// Mapping uses all six edge kinds; MappingDefaultKinds uses trace's default
+	// kinds (parent_of, implements, verified_by).
+	Mapping             *MappingRecall `json:"mapping_recall,omitempty"`
+	MappingDefaultKinds *MappingRecall `json:"mapping_recall_default_kinds,omitempty"`
+	Index               *IndexInfo     `json:"index,omitempty"`
+	PeakRSSBytes        *int64         `json:"peak_rss_bytes,omitempty"`
+	PeakRSSNote         string         `json:"peak_rss_note,omitempty"`
+	EmbeddingCost       *Cost          `json:"embedding_cost,omitempty"`
+	PerQuery            []QueryResult  `json:"per_query,omitempty"`
+	Notes               []string       `json:"notes,omitempty"`
 }
 
 type options struct {
@@ -157,7 +163,7 @@ func parseFlags(args []string, errw io.Writer) (options, error) {
 	fs.StringVar(&o.corpus, "corpus", "testdata/corpus", "corpus directory (docs/ and features/ are indexed)")
 	fs.StringVar(&o.queries, "queries", "bench/queries.json", "labelled queries")
 	fs.StringVar(&o.out, "out", "", "results file to write (required)")
-	fs.IntVar(&o.repeats, "repeats", 20, "timed passes over all queries")
+	fs.IntVar(&o.repeats, "repeats", 20, "timed passes over all queries (config A defaults to 1: each query pass is a paid call per query)")
 	fs.IntVar(&o.warmup, "warmup", 1, "untimed passes over all queries before timing")
 	fs.BoolVar(&o.allowCloud, "allow-cloud", false, "permit config A to call Bedrock (costs money)")
 	fs.StringVar(&o.price, "price-per-1k-tokens", "", "USD per 1000 tokens for config A; no default")
@@ -170,6 +176,11 @@ func parseFlags(args []string, errw io.Writer) (options, error) {
 	fs.BoolVar(&o.child, "child", false, "internal: run the measured workload in this process")
 	if err := fs.Parse(args); err != nil {
 		return o, err
+	}
+	repeatsSet := false
+	fs.Visit(func(f *flag.Flag) { repeatsSet = repeatsSet || f.Name == "repeats" })
+	if o.config == "A" && !repeatsSet {
+		o.repeats = 1 // every timed query pass is a paid Bedrock call per query
 	}
 	if !slices.Contains([]string{"A", "B", "C", "baseline"}, o.config) {
 		return o, fmt.Errorf("--config must be A, B, C or baseline")
@@ -196,6 +207,10 @@ func run(args []string, out, errw io.Writer) int {
 		if !errors.Is(err, flag.ErrHelp) {
 			fmt.Fprintln(errw, "bench:", err)
 		}
+		return 2
+	}
+	if err := checkCorpus(o); err != nil {
+		fmt.Fprintln(errw, "bench:", err)
 		return 2
 	}
 	var res Result
@@ -310,6 +325,10 @@ func hasModel(names []string, want string) bool {
 
 // ---- parent: run the workload in a child to read its peak RSS -------------
 
+// newCommand starts the measured child; a variable so tests can prove that a
+// refused configuration starts nothing.
+var newCommand = exec.Command
+
 func runViaChild(o options, args []string) (Result, error) {
 	switch o.config {
 	case "A":
@@ -331,7 +350,7 @@ func runViaChild(o options, args []string) (Result, error) {
 		return Result{}, err
 	}
 	// The child writes the results file itself; the parent adds the RSS.
-	cmd := exec.Command(exe, append(slices.Clone(args), "--child")...)
+	cmd := newCommand(exe, append(slices.Clone(args), "--child")...)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	cmd.Stdout = io.Discard
@@ -559,12 +578,10 @@ func runGoConfig(ctx context.Context, o options) (Result, error) {
 	res.Latency = &lat
 	fillMetrics(&res, qs, rankings, nil)
 
-	mr, err := mappingRecall(ctx, st, truth.Edges)
-	if err != nil {
-		return res, err
-	}
-	res.Mapping = mr
-	res.Mapping.Note = "trace over explicit edges, depth 1, both directions, all six edge kinds; independent of the embedder"
+	res.Mapping = mappingRecall(ctx, st, truth.Edges, allEdgeKinds)
+	res.Mapping.Note = "trace with all six edge kinds, depth 1, both directions, edge direction checked; compared with the parser's own explicit edges of the synthetic corpus; independent of the embedder"
+	res.MappingDefaultKinds = mappingRecall(ctx, st, truth.Edges, nil)
+	res.MappingDefaultKinds.Note = "same check with trace's default edge kinds (parent_of, implements, verified_by)"
 	res.EmbeddingCost = costFor(o)
 	return res, nil
 }
@@ -572,8 +589,8 @@ func runGoConfig(ctx context.Context, o options) (Result, error) {
 // fillMetrics sets the per-query rankings and both metric sets. skipped[i]
 // non-empty means query i was not answerable by the configuration.
 func fillMetrics(res *Result, qs []Query, rankings [][]string, skipped []string) {
-	var allQ, unfQ []Query
-	var allR, unfR [][]string
+	var allQ, unfQ, nidQ []Query
+	var allR, unfR, nidR [][]string
 	for i, q := range qs {
 		qr := QueryResult{Q: q.Q, Category: q.Category, Ranking: nonNilKeys(rankings[i])}
 		if skipped != nil && skipped[i] != "" {
@@ -585,6 +602,9 @@ func fillMetrics(res *Result, qs []Query, rankings [][]string, skipped []string)
 		allQ, allR = append(allQ, q), append(allR, rankings[i])
 		if q.Category != "filtered" {
 			unfQ, unfR = append(unfQ, q), append(unfR, rankings[i])
+			if q.Category != "exact_id" {
+				nidQ, nidR = append(nidQ, q), append(nidR, rankings[i])
+			}
 		}
 	}
 	if len(allQ) == len(qs) {
@@ -593,6 +613,8 @@ func fillMetrics(res *Result, qs []Query, rankings [][]string, skipped []string)
 	}
 	m := Summarize(unfQ, unfR)
 	res.MetricsUnfiltered = &m
+	n := Summarize(nidQ, nidR)
+	res.MetricsNonID = &n
 }
 
 func nonNilKeys(k []string) []string {
@@ -617,20 +639,23 @@ func costFor(o options) *Cost {
 	return &Cost{USD: &zero, Note: "local model, no per-token cost"}
 }
 
-// allEdgeKinds are the six spec edge kinds; trace follows only some by default.
+// allEdgeKinds are the six spec edge kinds; trace follows only parent_of,
+// implements and verified_by unless told otherwise.
 var allEdgeKinds = []string{"parent_of", "implements", "verified_by", "depends_on", "conflicts_with", "references"}
 
-// mappingRecall counts the truth edges that api.Trace reports as a direct
-// neighbour (same kind, far end) of the edge's source.
-func mappingRecall(ctx context.Context, st *store.Store, edges []corpus.TruthEdge) (*MappingRecall, error) {
+// mappingRecall counts the truth edges that api.Trace (depth 1, both
+// directions, the given kinds; nil means trace's defaults) reports as a direct
+// neighbour of the edge's source with the same kind and the same direction
+// (Via "<kind> forward": the source is the edge's source).
+func mappingRecall(ctx context.Context, st *store.Store, edges []corpus.TruthEdge, kinds []string) *MappingRecall {
 	m := &MappingRecall{Total: len(edges)}
 	for _, e := range edges {
-		n, err := api.Trace(ctx, st, e.Src, api.TraceOptions{Direction: "both", Depth: 1, Kinds: allEdgeKinds})
+		n, err := api.Trace(ctx, st, e.Src, api.TraceOptions{Direction: "both", Depth: 1, Kinds: kinds})
 		if err != nil {
 			continue // an unknown source counts as not found
 		}
 		for _, c := range n.Children {
-			if c.Key == e.Dst && strings.HasPrefix(c.Via, e.Kind+" ") {
+			if c.Key == e.Dst && c.Via == e.Kind+" forward" {
 				m.Found++
 				break
 			}
@@ -639,7 +664,7 @@ func mappingRecall(ctx context.Context, st *store.Store, edges []corpus.TruthEdg
 	if m.Total > 0 {
 		m.Recall = round6(float64(m.Found) / float64(m.Total))
 	}
-	return m, nil
+	return m
 }
 
 // exportChunks writes every chunk as {key, text} (the exact text the Go
@@ -675,4 +700,25 @@ func exportChunks(dbPath, out string) error {
 		return err
 	}
 	return os.WriteFile(out, b, 0o644)
+}
+
+// checkCorpus refuses a corpus other than the fixture: the truth edges come
+// from the embedded fixture truth.json and queries.json is labelled against
+// its keys, so another corpus would silently mismatch both.
+func checkCorpus(o options) error {
+	a, err1 := filepath.Abs(o.corpus)
+	b, err2 := filepath.Abs(corpus.Dir())
+	if err1 != nil || err2 != nil {
+		return errors.New("cannot resolve the corpus path")
+	}
+	if ra, err := filepath.EvalSymlinks(a); err == nil {
+		a = ra
+	}
+	if rb, err := filepath.EvalSymlinks(b); err == nil {
+		b = rb
+	}
+	if a != b {
+		return fmt.Errorf("--corpus %s is not the fixture corpus: queries.json and the mapping truth are labelled against testdata/corpus, so no other corpus is supported", o.corpus)
+	}
+	return nil
 }

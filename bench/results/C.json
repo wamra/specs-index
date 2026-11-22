@@ -60,10 +60,36 @@
    }
   }
  },
+ "metrics_non_id": {
+  "queries": 30,
+  "recall_at_5": 0.733333,
+  "mrr_at_10": 0.667593,
+  "exact_id_queries": 0,
+  "exact_id_accuracy_at_1": 0,
+  "absent_violations": 0,
+  "per_category": {
+   "keyword": {
+    "queries": 16,
+    "recall_at_5": 1,
+    "mrr_at_10": 0.953125,
+    "exact_id_queries": 0,
+    "exact_id_accuracy_at_1": 0,
+    "absent_violations": 0
+   },
+   "semantic": {
+    "queries": 14,
+    "recall_at_5": 0.428571,
+    "mrr_at_10": 0.34127,
+    "exact_id_queries": 0,
+    "exact_id_accuracy_at_1": 0,
+    "absent_violations": 0
+   }
+  }
+ },
  "latency": {
   "samples": 880,
-  "p50_ms": 46.823083,
-  "p95_ms": 83.46625
+  "p50_ms": 49.571709,
+  "p95_ms": 68.928625
  },
  "mapping_recall": {
   "found": 0,
@@ -72,13 +98,13 @@
   "note": "not applicable: the Orama harness stores no edges and has no trace"
  },
  "index": {
-  "size_bytes": 3172819,
+  "size_bytes": 3172999,
   "size_note": "byte length of JSON.stringify(save(db)) of the Orama index (not comparable to an SQLite file)",
-  "parse_seconds": 0.010117,
-  "embed_seconds": 1.803978,
+  "parse_seconds": 0.010734,
+  "embed_seconds": 4.251413,
   "chunks_embedded": 88
  },
- "peak_rss_bytes": 123584512,
+ "peak_rss_bytes": 125206528,
  "peak_rss_note": "ru_maxrss of the Node process only (embedding, Orama index and all queries); the Go side that exports the chunks is not included",
  "embedding_cost": {
   "usd": 0,
