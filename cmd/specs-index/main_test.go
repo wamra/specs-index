@@ -412,13 +412,98 @@ func TestEmbeddingEndToEndWithFakeServer(t *testing.T) {
 	}
 	mustOK(t, "index", "--root", root, "--reembed")
 
-	// a different model is refused, with the way out named
+	// a different model: auto degrades with a notice, vector/hybrid refuse
 	writeConfig(t, home, `{"provider":{"embed":"ollama"},"model":"other","dims":32,"base_url":"`+srv.URL+`"}`)
-	code, _, errw := cli(t, "search", "--root", root, "upload")
-	if code != 1 || !strings.Contains(errw, "index --reembed") || !strings.Contains(errw, "--mode fts") {
-		t.Errorf("mismatch: exit %d stderr %q", code, errw)
+	code, out, errw := cli(t, "search", "--root", root, "upload")
+	if code != 0 || !strings.Contains(out, "requirement") || !strings.Contains(errw, "index --reembed") {
+		t.Errorf("auto mismatch: exit %d stdout %q stderr %q", code, out, errw)
+	}
+	code, out, _ = cli(t, "search", "--root", root, "--json", "upload")
+	var jr struct{ Notice string }
+	if err := json.Unmarshal([]byte(out), &jr); code != 0 || err != nil || !strings.Contains(jr.Notice, "index --reembed") {
+		t.Errorf("json notice: exit %d err %v %s", code, err, out)
+	}
+	for _, mode := range []string{"vector", "hybrid"} {
+		code, _, errw = cli(t, "search", "--root", root, "--mode", mode, "upload")
+		if code != 1 || !strings.Contains(errw, "index --reembed") || !strings.Contains(errw, "--mode fts") {
+			t.Errorf("%s mismatch: exit %d stderr %q", mode, code, errw)
+		}
 	}
 	contains(t, mustOK(t, "search", "--root", root, "--mode", "fts", "upload"), "requirement")
+}
+
+func TestReembedRefusesWhenEmbedderDown(t *testing.T) {
+	root := newWorkspace(t)
+	srv := embedtest.New(32, "fake")
+	defer srv.Close()
+	home, _ := os.UserHomeDir()
+	writeConfig(t, home, `{"provider":{"embed":"ollama"},"model":"fake","dims":32,"base_url":"`+srv.URL+`"}`)
+	mustOK(t, "add", "--root", root, filepath.Join(root, "docs"))
+	mustOK(t, "index", "--root", root)
+	vecRows := func() int {
+		var st struct {
+			EmbeddedChunks int `json:"embedded_chunks"`
+		}
+		json.Unmarshal([]byte(mustOK(t, "status", "--root", root, "--json")), &st)
+		return st.EmbeddedChunks
+	}
+	before := vecRows()
+	if before == 0 {
+		t.Fatal("nothing embedded")
+	}
+	srv.Down.Store(true)
+	code, _, errw := cli(t, "index", "--root", root, "--reembed")
+	if code != 1 || !strings.Contains(errw, "reembed") {
+		t.Errorf("exit %d stderr %q", code, errw)
+	}
+	if after := vecRows(); after != before {
+		t.Errorf("vectors changed: %d -> %d", before, after)
+	}
+	if code, _, errw := cli(t, "doctor", "--root", root); code != 0 {
+		t.Errorf("doctor after refused reembed: %s", errw)
+	}
+	// provider none and --reembed is also refused
+	writeConfig(t, home, `{"provider":{"embed":"none"}}`)
+	if code, _, _ := cli(t, "index", "--root", root, "--reembed"); code != 1 {
+		t.Errorf("none + --reembed: exit %d", code)
+	}
+}
+
+func TestSearchByWholeEntityKey(t *testing.T) {
+	root := indexed(t)
+	for _, key := range []string{
+		"features/bulk_upload.feature#Resume an interrupted upload",
+		"features/bulk_upload.feature",
+		"BRD-004",
+	} {
+		var r struct {
+			Hits []struct{ Key, Source string }
+		}
+		if err := json.Unmarshal([]byte(mustOK(t, "search", "--root", root, "--json", key)), &r); err != nil {
+			t.Fatal(err)
+		}
+		if len(r.Hits) == 0 || r.Hits[0].Key != key || r.Hits[0].Source != "exact" {
+			t.Errorf("%q: hits %+v", key, r.Hits)
+		}
+	}
+}
+
+func TestStatusAndConfigListEnvironmentVariables(t *testing.T) {
+	root := indexed(t)
+	t.Setenv("SPECS_INDEX_ALLOW_CLOUD", "false")
+	for _, args := range [][]string{{"config"}, {"status"}} {
+		out := mustOK(t, append(args, "--root", root)...)
+		contains(t, out, "SPECS_INDEX_EMBED_PROVIDER", "SPECS_INDEX_ALLOW_CLOUD", "SPECS_INDEX_DB")
+	}
+	var r struct {
+		Environment []struct {
+			Name, Description, Value string
+			Set                      bool
+		}
+	}
+	if err := json.Unmarshal([]byte(mustOK(t, "config", "--root", root, "--json")), &r); err != nil || len(r.Environment) < 8 {
+		t.Fatalf("%v %+v", err, r)
+	}
 }
 
 func TestNoNetworkWithProviderNone(t *testing.T) {

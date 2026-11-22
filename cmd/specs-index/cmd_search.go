@@ -2,13 +2,11 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"strings"
 
 	"github.com/wamra/specs-index/internal/api"
-	"github.com/wamra/specs-index/internal/embed"
 )
 
 func cmdSearch(args []string, out, errw io.Writer) int {
@@ -36,14 +34,13 @@ func cmdSearch(args []string, out, errw io.Writer) int {
 	defer st.Close()
 	r, err := api.Search(context.Background(), st, root, query, cfg, o)
 	if err != nil {
-		code := fail(errw, err)
-		if errors.Is(err, embed.ErrFingerprintMismatch) {
-			fmt.Fprintln(errw, "specs-index: `--mode fts` still works without the embedder")
-		}
-		return code
+		return fail(errw, err)
 	}
 	if c.json {
 		return printJSON(out, r)
+	}
+	if r.Notice != "" {
+		fmt.Fprintf(errw, "specs-index: %s\n", r.Notice)
 	}
 	for _, n := range r.Notes {
 		fmt.Fprintf(out, "note: %s\n", n)

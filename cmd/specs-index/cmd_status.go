@@ -61,6 +61,14 @@ func cmdStatus(args []string, out, errw io.Writer) int {
 	if e.Fingerprint != "" {
 		fmt.Fprintf(out, "  index embedded with: %s (%d dimensions)\n", e.Fingerprint, e.Dims)
 	}
+	fmt.Fprintln(out, "environment variables:")
+	for _, v := range r.Environment {
+		cur := "not set"
+		if v.Set {
+			cur = "set to " + v.Value
+		}
+		fmt.Fprintf(out, "  %s (%s)  %s\n", v.Name, cur, v.Description)
+	}
 	return 0
 }
 

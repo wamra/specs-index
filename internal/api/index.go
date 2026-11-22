@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/wamra/specs-index/internal/config"
 	"github.com/wamra/specs-index/internal/embed"
@@ -85,11 +86,26 @@ func Index(ctx context.Context, st *store.Store, root string, cfg config.Config,
 	if err != nil {
 		return res, err
 	}
+	if o.Reembed {
+		// Verify the embedder before touching any vector.
+		switch state {
+		case EmbedNone:
+			return res, errors.New("--reembed needs an embedder, but none is configured; existing vectors were left untouched")
+		case EmbedCloudBlocked:
+			return res, fmt.Errorf("--reembed refused, existing vectors left untouched: %s", note)
+		}
+		pctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+		_, perr := emb.Embed(pctx, []string{"reembed probe"})
+		cancel()
+		if perr != nil {
+			return res, fmt.Errorf("--reembed refused, existing vectors left untouched: the embedder does not answer: %w", perr)
+		}
+	}
 	res.Embedding.State = state
 	switch state {
 	case EmbedNone:
-		if o.Reembed || o.Infer {
-			res.Embedding.Note = "no embedder is configured: --reembed and --infer need one"
+		if o.Infer {
+			res.Embedding.Note = "no embedder is configured: --infer needs one"
 		}
 		return res, nil
 	case EmbedCloudBlocked:

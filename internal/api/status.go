@@ -5,19 +5,13 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
-	"strconv"
 	"time"
 
 	"github.com/wamra/specs-index/internal/config"
+	"github.com/wamra/specs-index/internal/embed"
 	"github.com/wamra/specs-index/internal/store"
 	"github.com/wamra/specs-index/internal/vector"
 	"github.com/wamra/specs-index/internal/workspace"
-)
-
-// Meta keys the embed package pins; they are stored in the index's meta table.
-const (
-	metaFingerprint = "embed_fingerprint"
-	metaDims        = "embed_dims"
 )
 
 // EmbedderInfo describes the configured embedder without contacting it.
@@ -51,6 +45,7 @@ type StatusResult struct {
 	EmbeddedChunks  int            `json:"embedded_chunks"`
 	IndexedAt       string         `json:"indexed_at"`
 	Embedder        EmbedderInfo   `json:"embedder"`
+	Environment     []EnvVarInfo   `json:"environment"`
 }
 
 func embedderInfo(cfg config.Config, allowCloud bool) EmbedderInfo {
@@ -122,12 +117,10 @@ func Status(ctx context.Context, st *store.Store, root string, cfg config.Config
 		return r, err
 	}
 	r.Embedder = embedderInfo(cfg, false)
-	if r.Embedder.Fingerprint, err = st.Meta(metaFingerprint); err != nil {
+	if r.Embedder.Fingerprint, r.Embedder.Dims, err = embed.Stored(ctx, st); err != nil {
 		return r, err
 	}
-	if d, _ := st.Meta(metaDims); d != "" {
-		r.Embedder.Dims, _ = strconv.Atoi(d)
-	}
+	r.Environment = EnvInfo()
 	return r, nil
 }
 
@@ -209,10 +202,7 @@ func Doctor(ctx context.Context, root string, cfg config.Config, allowCloud bool
 	if err := db.QueryRowContext(ctx, `SELECT count(*) FROM chunk_vec`).Scan(&vecRows); err != nil {
 		add("vec1", CheckFail, "vector table query failed: %v", err)
 	} else {
-		dims := 0
-		if d, _ := st.Meta(metaDims); d != "" {
-			dims, _ = strconv.Atoi(d)
-		}
+		_, dims, _ := embed.Stored(ctx, st)
 		if vecRows > 0 && dims > 0 {
 			q := make([]float32, dims)
 			q[0] = 1

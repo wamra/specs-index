@@ -15,17 +15,39 @@ import (
 // file path with the home directory shown as "~". APIKeySet says only whether
 // the variable named by APIKeyEnv has a value; the value is never exposed.
 type ConfigResult struct {
-	File       string `json:"file"`
-	FileExists bool   `json:"file_exists"`
-	Provider   string `json:"provider"`
-	Model      string `json:"model"`
-	BaseURL    string `json:"base_url"`
-	AllowCloud bool   `json:"allow_cloud"`
-	Dims       int    `json:"dims"`
-	APIKeyEnv  string `json:"api_key_env"`
-	APIKeySet  bool   `json:"api_key_set"`
-	Region     string `json:"region"`
-	Profile    string `json:"profile"`
+	File        string       `json:"file"`
+	FileExists  bool         `json:"file_exists"`
+	Provider    string       `json:"provider"`
+	Model       string       `json:"model"`
+	BaseURL     string       `json:"base_url"`
+	AllowCloud  bool         `json:"allow_cloud"`
+	Dims        int          `json:"dims"`
+	APIKeyEnv   string       `json:"api_key_env"`
+	APIKeySet   bool         `json:"api_key_set"`
+	Region      string       `json:"region"`
+	Profile     string       `json:"profile"`
+	Environment []EnvVarInfo `json:"environment"`
+}
+
+// EnvVarInfo is one environment variable the tool reads (from
+// config.EnvVars). Value is the current value, which none of them keeps secret
+// (the API key variable holds a variable's name, never a key).
+type EnvVarInfo struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Set         bool   `json:"set"`
+	Value       string `json:"value"`
+}
+
+// EnvInfo lists the supported environment variables with their current values.
+func EnvInfo() []EnvVarInfo {
+	vars := config.EnvVars()
+	out := make([]EnvVarInfo, 0, len(vars))
+	for _, v := range vars {
+		val, set := os.LookupEnv(v.Name)
+		out = append(out, EnvVarInfo{Name: v.Name, Description: v.Description, Set: set && val != "", Value: val})
+	}
+	return out
 }
 
 func tildePath(p string) string {
@@ -53,6 +75,7 @@ func Config(cfg config.Config) (ConfigResult, error) {
 	if cfg.APIKeyEnv != "" {
 		r.APIKeySet = os.Getenv(cfg.APIKeyEnv) != ""
 	}
+	r.Environment = EnvInfo()
 	return r, nil
 }
 

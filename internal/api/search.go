@@ -44,6 +44,9 @@ type SearchResult struct {
 	Mode  string    `json:"mode"`
 	Hits  []HitInfo `json:"hits"`
 	Notes []string  `json:"notes"`
+	// Notice is set when auto mode degraded to exact and full-text results
+	// (fingerprint mismatch, no embeddings yet, embedder down); omitted otherwise.
+	Notice string `json:"notice,omitempty"`
 }
 
 // Search runs query against the index. In auto mode a missing or cloud-blocked
@@ -54,9 +57,20 @@ func Search(ctx context.Context, st *store.Store, root, query string, cfg config
 		mode = "auto"
 	}
 	res := SearchResult{Query: query, Mode: mode, Hits: []HitInfo{}, Notes: []string{}}
+	// A query that is exactly an entity key (any key, including scenario keys
+	// and feature paths) finds that entity first.
+	var exact []search.Hit
+	if mode != "fts" {
+		if k := strings.TrimSpace(query); k != "" {
+			exact, _ = search.Search(ctx, st, search.Query{IDs: []string{k}}, search.Options{Mode: "exact", K: 1, Root: root})
+		}
+	}
 	q, err := search.ParseQuery(query)
-	if err != nil {
+	if err != nil && len(exact) == 0 {
 		return res, err
+	}
+	if err != nil {
+		q = search.Query{}
 	}
 	emb, state, note, err := SetupEmbedder(cfg, o.AllowCloud)
 	if err != nil {
@@ -68,9 +82,31 @@ func Search(ctx context.Context, st *store.Store, root, query string, cfg config
 		}
 		res.Notes = append(res.Notes, "full text only: "+note)
 	}
-	hits, err := search.Search(ctx, st, q, search.Options{Mode: mode, K: o.K, Root: root, Embedder: emb})
-	if err != nil {
-		return res, err
+	var hits []search.Hit
+	if len(exact) > 0 && q.Text == "" && len(q.IDs) == 0 && len(q.Filters) == 0 && len(q.Has) == 0 && len(q.HasNot) == 0 && len(q.Exclude) == 0 {
+		hits = exact // the parsed query adds nothing beyond the key
+	} else {
+		var notice string
+		hits, err = search.Search(ctx, st, q, search.Options{Mode: mode, K: o.K, Root: root, Embedder: emb, Notice: &notice})
+		if err != nil {
+			if len(exact) == 0 {
+				return res, err
+			}
+			hits = nil
+		}
+		res.Notice = notice
+		if len(exact) > 0 {
+			merged := append([]search.Hit{}, exact...)
+			for _, h := range hits {
+				if h.Key != exact[0].Key {
+					merged = append(merged, h)
+				}
+			}
+			if k := o.K; k > 0 && len(merged) > k {
+				merged = merged[:k]
+			}
+			hits = merged
+		}
 	}
 	for _, h := range hits {
 		res.Hits = append(res.Hits, HitInfo{
