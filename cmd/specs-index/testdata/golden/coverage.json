@@ -1,0 +1,78 @@
+{
+  "requirements_without_design": [
+    {
+      "key": "BRD-015",
+      "type": "requirement",
+      "title": "Audit log",
+      "path": "docs/brd.md",
+      "line": 94
+    },
+    {
+      "key": "BRD-019",
+      "type": "requirement",
+      "title": "Preview annotations",
+      "path": "docs/brd.md",
+      "line": 119
+    },
+    {
+      "key": "BRD-023",
+      "type": "requirement",
+      "title": "Legacy fax intake",
+      "path": "docs/brd.md",
+      "line": 149
+    }
+  ],
+  "designs_without_verification": [
+    {
+      "key": "FDS-014",
+      "type": "design",
+      "title": "Folder export to PDF bundle",
+      "path": "docs/fds.md",
+      "line": 22
+    },
+    {
+      "key": "FDS-015",
+      "type": "design",
+      "title": "Accessibility checker",
+      "path": "docs/fds.md",
+      "line": 23
+    }
+  ],
+  "unlinked_scenarios": [
+    {
+      "key": "features/access.feature#Warn before a session times out",
+      "type": "scenario",
+      "title": "Warn before a session times out",
+      "path": "features/access.feature",
+      "line": 21
+    }
+  ],
+  "dangling": [
+    {
+      "id": "BRD-099",
+      "kind": "depends_on",
+      "referrer": "BRD-025",
+      "side": "target",
+      "path": "docs/brd.md",
+      "line": 164,
+      "mention": false
+    }
+  ],
+  "duplicates": [
+    {
+      "key": "AC-010",
+      "path": "docs/fds.md",
+      "line": 41,
+      "detail": "duplicate of AC-010 defined in docs/acceptance.md"
+    }
+  ],
+  "conflicts": [
+    {
+      "a": "BRD-013",
+      "b": "BRD-014",
+      "path": "docs/brd.md",
+      "line": 84
+    }
+  ],
+  "candidates": []
+}

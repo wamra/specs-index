@@ -1,0 +1,13 @@
+{
+  "changed": [],
+  "sources": [
+    {
+      "path": "docs",
+      "kind": "dir"
+    },
+    {
+      "path": "features",
+      "kind": "dir"
+    }
+  ]
+}

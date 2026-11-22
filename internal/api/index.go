@@ -1,0 +1,124 @@
+package api
+
+import (
+	"context"
+	"errors"
+	"fmt"
+
+	"github.com/wamra/specs-index/internal/config"
+	"github.com/wamra/specs-index/internal/embed"
+	"github.com/wamra/specs-index/internal/indexer"
+	"github.com/wamra/specs-index/internal/provider"
+	"github.com/wamra/specs-index/internal/store"
+	"github.com/wamra/specs-index/internal/vector"
+)
+
+// ErrNoSources is returned by Index when no source is registered.
+var ErrNoSources = errors.New("no sources registered: run `specs-index add PATH` first (for example `specs-index add docs features`)")
+
+// IndexOptions are the flags of index.
+type IndexOptions struct {
+	Reembed    bool
+	Infer      bool
+	AllowCloud bool
+	NoEmbed    bool
+}
+
+// IndexFailure is a file that could not be indexed.
+type IndexFailure struct {
+	Path   string `json:"path"`
+	Reason string `json:"reason"`
+}
+
+// EmbedSummary says what the embedding step did. State is none, ok,
+// cloud_blocked or unreachable; Note explains a skipped step.
+type EmbedSummary struct {
+	State    string `json:"state"`
+	Embedded int    `json:"embedded"`
+	Inferred int    `json:"inferred"`
+	Note     string `json:"note"`
+}
+
+// IndexResult is the result of index.
+type IndexResult struct {
+	Scanned   int            `json:"scanned"`
+	Parsed    int            `json:"parsed"`
+	Unchanged int            `json:"unchanged"`
+	Removed   int            `json:"removed"`
+	Failed    int            `json:"failed"`
+	Entities  int            `json:"entities"`
+	Edges     int            `json:"edges"`
+	Failures  []IndexFailure `json:"failures"`
+	Embedding EmbedSummary   `json:"embedding"`
+}
+
+// Index brings the index in step with the sources, then embeds the chunks that
+// need it. A missing, cloud-blocked or unreachable embedder leaves the index
+// text-only and is reported in Embedding, not as an error. A fingerprint
+// mismatch is an error (it names `index --reembed`).
+func Index(ctx context.Context, st *store.Store, root string, cfg config.Config, o IndexOptions) (IndexResult, error) {
+	srcs, err := indexer.ListSources(st)
+	if err != nil {
+		return IndexResult{}, err
+	}
+	if len(srcs) == 0 {
+		return IndexResult{}, ErrNoSources
+	}
+	rep, err := indexer.Run(ctx, st, root)
+	if err != nil {
+		return IndexResult{}, err
+	}
+	res := IndexResult{
+		Scanned: rep.Scanned, Parsed: rep.Parsed, Unchanged: rep.Unchanged, Removed: rep.Removed,
+		Failed: rep.Failed, Entities: rep.Entities, Edges: rep.Edges,
+		Failures: make([]IndexFailure, 0, len(rep.Failures)),
+	}
+	for _, f := range rep.Failures {
+		res.Failures = append(res.Failures, IndexFailure{Path: f.Path, Reason: f.Reason})
+	}
+	res.Embedding = EmbedSummary{State: EmbedNone}
+	if o.NoEmbed {
+		res.Embedding.Note = "embedding skipped (--no-embed)"
+		return res, nil
+	}
+	emb, state, note, err := SetupEmbedder(cfg, o.AllowCloud)
+	if err != nil {
+		return res, err
+	}
+	res.Embedding.State = state
+	switch state {
+	case EmbedNone:
+		if o.Reembed || o.Infer {
+			res.Embedding.Note = "no embedder is configured: --reembed and --infer need one"
+		}
+		return res, nil
+	case EmbedCloudBlocked:
+		res.Embedding.Note = "text-only index: " + note
+		return res, nil
+	}
+	vs := vector.NewVec1(st.DB())
+	if o.Reembed {
+		if err := embed.Reembed(ctx, st, vs); err != nil {
+			return res, err
+		}
+	}
+	n, err := embed.Pending(ctx, st, emb, vs)
+	switch {
+	case errors.Is(err, provider.ErrDown):
+		res.Embedding.State = EmbedUnreachable
+		res.Embedding.Embedded = n
+		res.Embedding.Note = fmt.Sprintf("text-only index: the embedder is unreachable (%v); run `specs-index index` again when it is up", err)
+		return res, nil
+	case err != nil:
+		return res, err
+	}
+	res.Embedding.Embedded = n
+	if o.Infer {
+		inf, err := embed.Infer(ctx, st, vs)
+		if err != nil {
+			return res, err
+		}
+		res.Embedding.Inferred = inf
+	}
+	return res, nil
+}

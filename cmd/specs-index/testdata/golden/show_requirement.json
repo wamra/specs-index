@@ -1,0 +1,45 @@
+{
+  "key": "BRD-004",
+  "type": "requirement",
+  "title": "Upload resume",
+  "status": "draft",
+  "priority": "P2",
+  "tags": [],
+  "path": "docs/brd.md",
+  "start_line": 25,
+  "end_line": 29,
+  "stale": false,
+  "source": "## BRD-004 Upload resume\nStatus: draft    Priority: P2\nParent: BRD-003\n\nAn interrupted bulk upload can be resumed without sending finished files again.",
+  "steps": [],
+  "outgoing": [
+    {
+      "kind": "verified_by",
+      "key": "features/bulk_upload.feature#Resume an interrupted upload",
+      "missing": false,
+      "explicit": true,
+      "origin": "tag",
+      "path": "features/bulk_upload.feature",
+      "line": 13
+    }
+  ],
+  "incoming": [
+    {
+      "kind": "implements",
+      "key": "FDS-002",
+      "missing": false,
+      "explicit": true,
+      "origin": "table",
+      "path": "docs/fds.md",
+      "line": 10
+    },
+    {
+      "kind": "parent_of",
+      "key": "BRD-003",
+      "missing": false,
+      "explicit": true,
+      "origin": "field",
+      "path": "docs/brd.md",
+      "line": 27
+    }
+  ]
+}

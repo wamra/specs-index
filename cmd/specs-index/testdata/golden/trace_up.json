@@ -1,0 +1,50 @@
+{
+  "key": "AC-001",
+  "type": "acceptance",
+  "title": "A 50 MB file uploads in under 30 seconds on the reference network.",
+  "path": "docs/acceptance.md",
+  "line": 9,
+  "via": "",
+  "explicit": true,
+  "repeat": false,
+  "missing": false,
+  "children": [
+    {
+      "key": "FDS-001",
+      "type": "design",
+      "title": "Upload endpoint and storage",
+      "path": "docs/fds.md",
+      "line": 9,
+      "via": "verified_by reversed",
+      "explicit": true,
+      "repeat": false,
+      "missing": false,
+      "children": [
+        {
+          "key": "BRD-001",
+          "type": "requirement",
+          "title": "Document portal platform",
+          "path": "docs/brd.md",
+          "line": 7,
+          "via": "implements forward",
+          "explicit": true,
+          "repeat": false,
+          "missing": false,
+          "children": []
+        },
+        {
+          "key": "BRD-002",
+          "type": "requirement",
+          "title": "Document upload",
+          "path": "docs/brd.md",
+          "line": 12,
+          "via": "implements forward",
+          "explicit": true,
+          "repeat": false,
+          "missing": false,
+          "children": []
+        }
+      ]
+    }
+  ]
+}

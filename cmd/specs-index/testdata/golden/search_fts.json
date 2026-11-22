@@ -1,0 +1,33 @@
+{
+  "query": "upload type:requirement status:approved",
+  "mode": "auto",
+  "hits": [
+    {
+      "key": "BRD-002",
+      "type": "requirement",
+      "title": "Document upload",
+      "path": "docs/brd.md",
+      "start_line": 12,
+      "end_line": 16,
+      "status": "approved",
+      "snippet": "Document [upload]",
+      "score": 2.817909,
+      "stale": false,
+      "source": "fts"
+    },
+    {
+      "key": "BRD-003",
+      "type": "requirement",
+      "title": "Bulk upload",
+      "path": "docs/brd.md",
+      "start_line": 18,
+      "end_line": 23,
+      "status": "approved",
+      "snippet": "Bulk [upload]",
+      "score": 2.817909,
+      "stale": false,
+      "source": "fts"
+    }
+  ],
+  "notes": []
+}

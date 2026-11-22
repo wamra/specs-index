@@ -1,0 +1,20 @@
+{
+  "query": "BRD-004",
+  "mode": "auto",
+  "hits": [
+    {
+      "key": "BRD-004",
+      "type": "requirement",
+      "title": "Upload resume",
+      "path": "docs/brd.md",
+      "start_line": 25,
+      "end_line": 29,
+      "status": "draft",
+      "snippet": "An interrupted bulk upload can be resumed without sending finished files again.",
+      "score": 0,
+      "stale": false,
+      "source": "exact"
+    }
+  ],
+  "notes": []
+}
