@@ -53,12 +53,17 @@ type parser struct {
 }
 
 // Parse parses one Markdown file. path is stored in Doc.Path. types maps ID
-// prefix to entity type; nil or empty selects DefaultTypes, and an unknown
+// prefix to entity type; is merged over DefaultTypes, and an unknown
 // prefix is a requirement.
 func Parse(path string, src []byte, types map[string]string) (model.Doc, error) {
-	if len(types) == 0 {
-		types = DefaultTypes
+	merged := make(map[string]string, len(DefaultTypes)+len(types))
+	for k, v := range DefaultTypes {
+		merged[k] = v
 	}
+	for k, v := range types {
+		merged[k] = v
+	}
+	types = merged
 	text := strings.TrimPrefix(string(src), "\xEF\xBB\xBF")
 	text = strings.TrimSuffix(text, "\n")
 	var lines []string
@@ -309,10 +314,16 @@ func (p *parser) fieldLine(w *work, line string, no int) bool {
 	for _, seg := range fieldSplit.Split(strings.TrimSpace(line), -1) {
 		k, v, ok := strings.Cut(seg, ":")
 		k = strings.ToLower(strings.TrimSpace(k))
-		if !ok || !fieldNames[k] {
+		if ok && fieldNames[k] {
+			pairs = append(pairs, kv{k, strings.TrimSpace(v)})
+			continue
+		}
+		if len(pairs) == 0 {
 			return false
 		}
-		pairs = append(pairs, kv{k, strings.TrimSpace(v)})
+		// A segment without a known key continues the previous value.
+		last := &pairs[len(pairs)-1]
+		last.v = strings.TrimSpace(last.v + " " + strings.TrimSpace(seg))
 	}
 	for _, f := range pairs {
 		p.relation(w, f.k, f.v, no, "field")

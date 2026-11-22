@@ -257,7 +257,10 @@ func TestFrontMatterTypeAndVersion(t *testing.T) {
 }
 
 func TestCustomPrefixTypes(t *testing.T) {
-	d, _ := Parse("x.md", []byte("## NFR-001 Fast\n## ZZ-001 Other\n"), map[string]string{"NFR": "design"})
+	d, err := Parse("x.md", []byte("## NFR-001 Fast\n## ZZ-001 Other\n"), map[string]string{"NFR": "design"})
+	if err != nil {
+		t.Fatal(err)
+	}
 	if got := entity(t, d, "NFR-001").Type; got != "design" {
 		t.Errorf("NFR type = %q", got)
 	}
@@ -282,14 +285,61 @@ func TestCRLFAndBOM(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		lf, _ := Parse(rel, b, nil)
+		lf, err := Parse(rel, b, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
 		crlf := "\xEF\xBB\xBF" + strings.ReplaceAll(string(b), "\n", "\r\n")
-		got, _ := Parse(rel, []byte(crlf), nil)
+		got, err := Parse(rel, []byte(crlf), nil)
+		if err != nil {
+			t.Fatal(err)
+		}
 		if !reflect.DeepEqual(got, lf) {
 			t.Errorf("%s: CRLF+BOM parse differs from LF parse", rel)
 		}
 		if len(got.Entities) == 0 {
 			t.Errorf("%s: no entities", rel)
 		}
+	}
+}
+
+func TestFieldLineSegmentWithoutKeyContinuesValue(t *testing.T) {
+	d := parseStr(t, "## BRD-001 A\nDepends on: BRD-003,  BRD-004\nStatus: in  review    Priority: P1\n\nBody.\n")
+	set := edgeSet(d.Edges)
+	for _, dst := range []string{"BRD-003", "BRD-004"} {
+		if e, ok := set[edgeKey{"BRD-001", dst, "depends_on"}]; !ok || e.Origin != "field" {
+			t.Errorf("missing depends_on -> %s (edges %+v)", dst, d.Edges)
+		}
+	}
+	for k := range set {
+		if k.kind == "references" {
+			t.Errorf("unexpected references edge %+v", k)
+		}
+	}
+	e := entity(t, d, "BRD-001")
+	if e.Status != "in review" || e.Priority != "P1" {
+		t.Errorf("status/priority = %q/%q", e.Status, e.Priority)
+	}
+	if e.Body != "Body." {
+		t.Errorf("body = %q", e.Body)
+	}
+}
+
+func TestCustomTypesMergeOverDefaults(t *testing.T) {
+	d, err := Parse("x.md", []byte("## NFR-001 Fast\n## FDS-001 D\n## BRD-001 R\n"), map[string]string{"NFR": "design"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for key, want := range map[string]string{"NFR-001": "design", "FDS-001": "design", "BRD-001": "requirement"} {
+		if got := entity(t, d, key).Type; got != want {
+			t.Errorf("%s type = %q, want %q", key, got, want)
+		}
+	}
+	d, err = Parse("x.md", []byte("## AC-001 X\n"), map[string]string{"AC": "requirement"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := entity(t, d, "AC-001").Type; got != "requirement" {
+		t.Errorf("override of default prefix: %q", got)
 	}
 }
