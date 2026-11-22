@@ -17,6 +17,7 @@ import (
 	"github.com/wamra/specs-index/internal/config"
 	"github.com/wamra/specs-index/internal/corpus"
 	"github.com/wamra/specs-index/internal/embedtest"
+	"github.com/wamra/specs-index/internal/filelock"
 )
 
 var update = flag.Bool("update", false, "rewrite the golden files")
@@ -888,4 +889,27 @@ func TestRefusedAddCreatesNothing(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(root, ".Wammy")); !os.IsNotExist(err) {
 		t.Errorf(".Wammy created by an add of a missing path")
 	}
+}
+
+func TestSecondIndexWaitsThenFails(t *testing.T) {
+	root := indexed(t)
+	l, err := filelock.Try(os.Getenv("SPECS_INDEX_DB") + ".lock")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func(d time.Duration) { api.IndexLockWait = d }(api.IndexLockWait)
+	api.IndexLockWait = 300 * time.Millisecond
+	code, out, errw := cli(t, "index", "--root", root)
+	if code != 1 || out != "" || !strings.Contains(errw, "waiting") || !strings.Contains(errw, "another `specs-index index`") {
+		t.Errorf("index while locked: exit %d\nstdout %q\nstderr %q", code, out, errw)
+	}
+	if strings.Count(strings.TrimSpace(errw), "\n") != 1 {
+		t.Errorf("want one wait note and one error line, got %q", errw)
+	}
+	// readers never take the lock
+	for _, args := range [][]string{{"status"}, {"search", "upload"}, {"coverage"}, {"trace", "BRD-001"}} {
+		mustOK(t, append(args, "--root", root)...)
+	}
+	l.Release()
+	mustOK(t, "index", "--root", root)
 }

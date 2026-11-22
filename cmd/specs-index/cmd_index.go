@@ -46,6 +46,11 @@ func cmdIndex(args []string, out, errw io.Writer) int {
 	}
 	defer st.Close()
 	excludeState(root, errw)
+	release, err := api.LockIndex(context.Background(), root, errw)
+	if err != nil {
+		return fail(errw, err)
+	}
+	defer release()
 	r, err := api.Index(context.Background(), st, root, cfg, o)
 	if err != nil {
 		return fail(errw, err)

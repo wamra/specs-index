@@ -16,6 +16,7 @@ import (
 	"github.com/wamra/specs-index/internal/config"
 	"github.com/wamra/specs-index/internal/corpus"
 	"github.com/wamra/specs-index/internal/embedtest"
+	"github.com/wamra/specs-index/internal/filelock"
 )
 
 type testRPCError struct {
@@ -745,5 +746,24 @@ func TestStatusListsSourcePaths(t *testing.T) {
 	text := result(t, byID(t, serve(t, root, call(1, "status", "")), "1")).Content[0].Text
 	if !strings.Contains(text, `"source_paths": [`) || !strings.Contains(text, `"path": "features"`) {
 		t.Errorf("status does not list the sources:\n%s", text)
+	}
+}
+
+func TestIndexWhileLockedIsAToolError(t *testing.T) {
+	root := newRoot(t)
+	indexed(t, root)
+	l, err := filelock.Try(os.Getenv("SPECS_INDEX_DB") + ".lock")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer l.Release()
+	defer func(d time.Duration) { api.IndexLockWait = d }(api.IndexLockWait)
+	api.IndexLockWait = 300 * time.Millisecond
+	msgs := serve(t, root, call(1, "index", ""), call(2, "status", ""))
+	if r := result(t, byID(t, msgs, "1")); !r.IsError || !strings.Contains(r.Content[0].Text, "another `specs-index index`") {
+		t.Errorf("index while locked: %+v", r)
+	}
+	if r := result(t, byID(t, msgs, "2")); r.IsError {
+		t.Errorf("status while locked: %s", r.Content[0].Text)
 	}
 }

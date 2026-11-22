@@ -45,6 +45,8 @@ Common flags: `--root DIR` (project root), `--json` (print the result as JSON).
 - `--allow-cloud`: allow a cloud embedding provider for this run.
 - `--no-embed`: index text only.
 
+Only one `index` of a project runs at a time (CLI or MCP): it holds a lock on the file `<index>.lock` next to the index database (`.Wammy/specs.sqlite.lock` by default; the file stays in place). A second `index` prints one line to stderr saying that another index of the project is running, waits up to two minutes for the lock, and then either runs as usual (what the first run indexed is unchanged and skipped) or fails with exit 1. Read commands (`search`, `show`, `trace`, `coverage`, `status`, `sources`, `doctor`) never take the lock; `add` and `remove` do not take it either.
+
 The first lines report how many files were scanned, parsed, unchanged, removed or failed, then the entity and edge counts, then whether embedding happened (`no embedder configured; the index is text-only`). A cloud embedder that is not allowed, an unreachable embedder, or an embedder that differs from the one the stored vectors came from (a changed model or vector size) does not fail `index`: the text index is updated, nothing is embedded, and the `embedding:` line says why. In JSON, `embedding.state` is `none`, `ok`, `cloud_blocked`, `unreachable` or `mismatch`, and `embedding.note` holds the explanation; after a mismatch the note names `index --reembed`. Explicit `search --mode vector` and `--mode hybrid` keep refusing until then.
 
 ### trace

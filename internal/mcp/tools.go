@@ -379,6 +379,11 @@ func toolIndex(ctx context.Context, s *server, raw json.RawMessage) (any, error)
 	// AllowCloud stays false: cloud embedding happens only when the user's
 	// own config file already allows it.
 	return s.withWrite(func(st *store.Store) (any, error) {
+		release, err := api.LockIndex(ctx, s.root, s.log)
+		if err != nil {
+			return nil, err
+		}
+		defer release()
 		return api.Index(ctx, st, s.root, cfg, api.IndexOptions{Reembed: a.Reembed})
 	})
 }

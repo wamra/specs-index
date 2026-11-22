@@ -8,6 +8,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/bedrockruntime v1.63.13
 	github.com/aws/smithy-go v1.28.9
 	github.com/ncruces/go-sqlite3 v0.38.0
+	golang.org/x/sys v0.50.0
 )
 
 require (
@@ -25,5 +26,4 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sts v1.52.0 // indirect
 	github.com/ncruces/go-sqlite3-wasm/v6 v6.7.35401 // indirect
 	github.com/ncruces/julianday v1.0.0 // indirect
-	golang.org/x/sys v0.50.0 // indirect
 )
