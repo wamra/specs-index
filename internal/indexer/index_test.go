@@ -590,3 +590,104 @@ func TestSourcesSortedAndKinds(t *testing.T) {
 		t.Fatalf("sources = %v", got)
 	}
 }
+
+// interrupted runs Run and cancels it after the first document of the main
+// pass, as Ctrl-C would.
+func interrupted(t *testing.T, st *store.Store, root string) {
+	t.Helper()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	afterDoc = cancel
+	defer func() { afterDoc = nil }()
+	if _, err := Run(ctx, st, root); err == nil {
+		t.Fatal("expected the interrupted run to fail")
+	}
+}
+
+func ownerAndFindings(t *testing.T, st *store.Store, key string) (string, int) {
+	t.Helper()
+	var p sql.NullString
+	st.DB().QueryRow(`SELECT d.path FROM entities e JOIN documents d ON d.id=e.doc_id WHERE e.key=?`, key).Scan(&p)
+	return p.String, count(t, st, `SELECT count(*) FROM findings WHERE kind='duplicate' AND key=?`, key)
+}
+
+func TestInterruptedRunAfterOwnerDeletedRecovers(t *testing.T) {
+	root := evalDir(t, t.TempDir())
+	write(t, filepath.Join(root, "a.md"), "## BRD-001 A\n")
+	write(t, filepath.Join(root, "b.md"), "## BRD-001 B\n")
+	st := openStore(t, root)
+	AddSource(st, root, ".")
+	runIdx(t, st, root)
+	os.Remove(filepath.Join(root, "a.md"))
+	interrupted(t, st, root)
+	runIdx(t, st, root)
+	if o, f := ownerAndFindings(t, st, "BRD-001"); o != "b.md" || f != 0 {
+		t.Fatalf("owner=%q findings=%d", o, f)
+	}
+}
+
+func TestInterruptedRunAfterTakeoverRecovers(t *testing.T) {
+	root := evalDir(t, t.TempDir())
+	write(t, filepath.Join(root, "b.md"), "## BRD-001 B\n")
+	st := openStore(t, root)
+	AddSource(st, root, ".")
+	runIdx(t, st, root)
+	write(t, filepath.Join(root, "a.md"), "## BRD-001 A\n")
+	interrupted(t, st, root)
+	runIdx(t, st, root)
+	if o, f := ownerAndFindings(t, st, "BRD-001"); o != "a.md" || f != 1 {
+		t.Fatalf("owner=%q findings=%d", o, f)
+	}
+	if n := count(t, st, `SELECT count(*) FROM entities`); n != 1 {
+		t.Fatalf("entities=%d", n)
+	}
+}
+
+func TestCaseVariantInternalDirsNotWalked(t *testing.T) {
+	root := evalDir(t, t.TempDir())
+	write(t, filepath.Join(root, "a.md"), "## BRD-001 A\n")
+	write(t, filepath.Join(root, ".wammy", "x.md"), "## BRD-998 H\n")
+	write(t, filepath.Join(root, ".GIT", "y.md"), "## BRD-999 H\n")
+	st := openStore(t, root)
+	AddSource(st, root, ".")
+	rep := runIdx(t, st, root)
+	if rep.Scanned != 1 {
+		t.Fatalf("scanned %d, want 1", rep.Scanned)
+	}
+}
+
+func TestSymlinkToDirectlyFoundFileIndexedOnce(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlinks need privileges on windows")
+	}
+	root := evalDir(t, t.TempDir())
+	write(t, filepath.Join(root, "real", "a.md"), "## BRD-001 A\n")
+	if err := os.Symlink(filepath.Join(root, "real", "a.md"), filepath.Join(root, "link.md")); err != nil {
+		t.Fatal(err)
+	}
+	st := openStore(t, root)
+	AddSource(st, root, ".")
+	rep := runIdx(t, st, root)
+	if rep.Scanned != 1 || rep.Failed != 0 {
+		t.Fatalf("report: %+v", rep)
+	}
+	if n := count(t, st, `SELECT count(*) FROM findings`); n != 0 {
+		t.Fatalf("spurious findings: %d", n)
+	}
+	if n := count(t, st, `SELECT count(*) FROM documents WHERE path='real/a.md'`); n != 1 {
+		t.Fatalf("real file not indexed")
+	}
+	// when the target is not covered by any source, the link path is indexed
+	root2 := evalDir(t, t.TempDir())
+	write(t, filepath.Join(root2, "real", "a.md"), "## BRD-001 A\n")
+	os.MkdirAll(filepath.Join(root2, "links"), 0o755)
+	os.Symlink(filepath.Join(root2, "real", "a.md"), filepath.Join(root2, "links", "link.md"))
+	st2 := openStore(t, root2)
+	if err := AddSource(st2, root2, "links"); err != nil {
+		t.Fatal(err)
+	}
+	rep = runIdx(t, st2, root2)
+	if n := count(t, st2, `SELECT count(*) FROM documents WHERE path='links/link.md'`); n != 1 {
+		t.Fatalf("link not indexed: %+v", rep)
+	}
+}

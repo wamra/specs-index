@@ -37,6 +37,9 @@ type Report struct {
 	Failures                                    []Failure
 }
 
+// afterDoc, when set by a test, runs after each document of the main pass.
+var afterDoc func()
+
 const (
 	statusOK     = "ok"
 	statusFailed = "failed"
@@ -103,6 +106,9 @@ func run(ctx context.Context, st *store.Store, root string, pruneOnly bool) (Rep
 		}
 		if err := r.process(p, false); err != nil {
 			return Report{}, err
+		}
+		if afterDoc != nil {
+			afterDoc()
 		}
 	}
 	// Documents whose duplicate-ID ownership may have changed.
@@ -381,6 +387,15 @@ func deleteEntity(tx *sql.Tx, id int64) error {
 	return nil
 }
 
+// queue schedules path for a forced re-parse. The document's file state is
+// cleared in the same transaction, so if the run stops before the re-parse the
+// next run still sees the document as changed.
+func (r *runner) queue(tx *sql.Tx, path string) error {
+	r.pending[path] = true
+	_, err := tx.Exec(`UPDATE documents SET sha256 = NULL, mtime = NULL, size = NULL WHERE path = ?`, path)
+	return err
+}
+
 // queueDuplicates schedules a re-parse of every other document that defines
 // one of keys as a duplicate, so one of them can take the key over.
 func (r *runner) queueDuplicates(tx *sql.Tx, keys []string, exceptDoc int64) error {
@@ -396,7 +411,10 @@ func (r *runner) queueDuplicates(tx *sql.Tx, keys []string, exceptDoc int64) err
 				rows.Close()
 				return err
 			}
-			r.pending[p] = true
+			if err := r.queue(tx, p); err != nil {
+				rows.Close()
+				return err
+			}
 		}
 		rows.Close()
 	}
@@ -481,7 +499,9 @@ func (r *runner) storeDoc(tx *sql.Tx, docID int64, rel string, doc model.Doc) er
 			if err := deleteEntity(tx, ownerID); err != nil {
 				return err
 			}
-			r.pending[ownerPath] = true
+			if err := r.queue(tx, ownerPath); err != nil {
+				return err
+			}
 		}
 		owned[e.Key] = true
 		if err := storeEntity(tx, docID, rel, e, old); err != nil {

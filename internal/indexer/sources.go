@@ -83,7 +83,9 @@ func ListSources(st *store.Store) ([]Source, error) {
 }
 
 // skippedDir reports directories that are never walked.
-func skippedDir(name string) bool { return name == ".git" || name == workspace.StateDir }
+func skippedDir(name string) bool {
+	return strings.EqualFold(name, ".git") || strings.EqualFold(name, workspace.StateDir)
+}
 
 func hasSkippedComponent(rel string) bool {
 	for _, c := range strings.Split(rel, "/") {
@@ -110,6 +112,7 @@ func discover(ctx context.Context, st *store.Store, root string) ([]string, []Fa
 		return nil, nil, err
 	}
 	set := map[string]bool{}
+	links := map[string]string{} // symlink path -> root-relative real target
 	var fails []Failure
 	failed := map[string]bool{}
 	fail := func(rel, reason string) {
@@ -172,7 +175,8 @@ func discover(ctx context.Context, st *store.Store, root string) ([]string, []Fa
 				if hasSkippedComponent(rel) {
 					return nil
 				}
-				if _, lerr := workspace.Rel(root, p); lerr != nil {
+				target, lerr := workspace.Rel(root, p)
+				if lerr != nil {
 					if os.IsNotExist(lerr) {
 						fail(rel, "broken symlink")
 					} else {
@@ -184,7 +188,7 @@ func discover(ctx context.Context, st *store.Store, root string) ([]string, []Fa
 				if serr != nil || ti.IsDir() || !supported(d.Name()) {
 					return nil // linked directories are covered at their real location
 				}
-				set[rel] = true
+				links[rel] = target
 				return nil
 			}
 			if supported(d.Name()) && !hasSkippedComponent(rel) {
@@ -194,6 +198,13 @@ func discover(ctx context.Context, st *store.Store, root string) ([]string, []Fa
 		})
 		if walkErr != nil {
 			return nil, nil, walkErr
+		}
+	}
+	// A symlink to a file that is also found directly is the same file: index
+	// the real path only.
+	for link, target := range links {
+		if !set[target] {
+			set[link] = true
 		}
 	}
 	files := make([]string, 0, len(set))
