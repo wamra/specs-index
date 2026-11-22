@@ -171,14 +171,16 @@ func TestEveryPooledConnectionHasExtensions(t *testing.T) {
 	s, _ := openTemp(t)
 	db := s.DB()
 	db.SetMaxOpenConns(4)
-	var wg sync.WaitGroup
-	errs := make(chan error, 4)
+	var wg, acquired sync.WaitGroup
+	errs := make(chan error, 8)
 	ready := make(chan struct{})
 	for i := 0; i < 4; i++ {
 		wg.Add(1)
+		acquired.Add(1)
 		go func() {
 			defer wg.Done()
 			conn, err := db.Conn(t.Context())
+			acquired.Done()
 			if err != nil {
 				errs <- err
 				return
@@ -197,6 +199,10 @@ func TestEveryPooledConnectionHasExtensions(t *testing.T) {
 				errs <- err
 			}
 		}()
+	}
+	acquired.Wait() // every goroutine now holds its own connection (pool max is 4)
+	if st := db.Stats(); st.InUse != 4 && len(errs) == 0 {
+		t.Errorf("InUse = %d; want 4 distinct connections held at once", st.InUse)
 	}
 	close(ready)
 	wg.Wait()
