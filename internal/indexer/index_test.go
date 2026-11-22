@@ -709,3 +709,51 @@ func TestScenarioChunkHasEachStepOnce(t *testing.T) {
 		t.Fatalf("step appears %d times in the chunk text:\n%s", n, text)
 	}
 }
+
+func TestRepeatedIDInOneFileIsADuplicate(t *testing.T) {
+	root := evalDir(t, t.TempDir())
+	write(t, filepath.Join(root, "a.md"), "## ZZ-001 First\n\nA.\n\n## ZZ-001 Again\n\nB.\n")
+	st := openStore(t, root)
+	AddSource(st, root, ".")
+	runIdx(t, st, root)
+	var line int
+	var detail string
+	if err := st.DB().QueryRow(`SELECT line, detail FROM findings WHERE kind='duplicate' AND key='ZZ-001'`).Scan(&line, &detail); err != nil {
+		t.Fatalf("no duplicate finding: %v", err)
+	}
+	if line != 5 || !strings.Contains(detail, "same file") {
+		t.Errorf("finding line %d detail %q", line, detail)
+	}
+}
+
+func TestUnterminatedDocStringFailsTheFile(t *testing.T) {
+	root := evalDir(t, t.TempDir())
+	write(t, filepath.Join(root, "x.feature"), "Feature: f\n\n  Scenario: first\n    Given a\n      \"\"\"\n      open\n\n  Scenario: lost\n    Given b\n")
+	st := openStore(t, root)
+	AddSource(st, root, ".")
+	rep := runIdx(t, st, root)
+	if rep.Failed != 1 || len(rep.Failures) != 1 || !strings.Contains(rep.Failures[0].Reason, "doc string") {
+		t.Errorf("report %+v", rep)
+	}
+}
+
+func TestInferredEdgesToVanishedEntitiesAreDropped(t *testing.T) {
+	root := evalDir(t, t.TempDir())
+	write(t, filepath.Join(root, "a.md"), "## BRD-001 Req\n\n## FDS-001 Design\n\n## FDS-002 Other\n")
+	st := openStore(t, root)
+	AddSource(st, root, ".")
+	runIdx(t, st, root)
+	for _, src := range []string{"FDS-001", "FDS-002"} {
+		if _, err := st.DB().Exec(`INSERT INTO edges(src_key, dst_key, kind, explicit, origin) VALUES (?, 'BRD-001', 'implements', 0, 'inferred')`, src); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write(t, filepath.Join(root, "a.md"), "## BRD-001 Req\n\n## FDS-002 Other\n")
+	runIdx(t, st, root)
+	if n := count(t, st, `SELECT count(*) FROM edges WHERE explicit = 0 AND src_key = 'FDS-001'`); n != 0 {
+		t.Errorf("inferred edge from deleted FDS-001 kept (%d)", n)
+	}
+	if n := count(t, st, `SELECT count(*) FROM edges WHERE explicit = 0 AND src_key = 'FDS-002'`); n != 1 {
+		t.Errorf("inferred edge between live entities dropped (%d)", n)
+	}
+}

@@ -48,8 +48,8 @@ The project root is the nearest ancestor of the working directory that has a `.g
 
 Registered directories are walked for `.md` and `.feature` files (`.git` and `.Wammy` are skipped).
 
-- **Markdown**: entities have IDs of the form `[A-Z][A-Z0-9]*-<digits>` (`BRD-004`, `FDS-012`, `AC-003`). An ID heading (`## BRD-004 Upload resume`) or the first column of a pipe table row is an entity. The prefixes `BRD`, `FDS` and `AC` mean requirement, design and acceptance; any other prefix is a requirement. Field lines under a heading (`Status`, `Priority`, `Parent`, `Depends on`, `Conflicts with`, `Mapped BRDs`, ...) and table columns become metadata and links. IDs inside fenced code blocks are ignored; an ID in inline code or prose is a `references` link.
-- **Gherkin**: one entity per feature and per scenario. ID tags (`@BRD-003`) on a feature, rule or scenario link the tagged ID to the scenarios; `@id:SCN-101` sets a scenario's key.
+- **Markdown**: entities have IDs of the form `[A-Z][A-Z0-9]*-<digits>` (`BRD-004`, `FDS-012`, `AC-003`). An ID heading (`## BRD-004 Upload resume`) or the first column of a pipe table row is an entity. The prefixes `BRD`, `FDS` and `AC` mean requirement, design and acceptance; any other prefix is a requirement. Field lines under a heading (`Status`, `Priority`, `Parent`, `Depends on`, `Conflicts with`, `Mapped BRDs`, ...) and table columns become metadata and links; an `FDS:` field under an acceptance criterion is a `verified_by` link, under any other heading a `references` link. IDs inside fenced code blocks are ignored; an ID in inline code or prose is a `references` link.
+- **Gherkin**: one entity per feature and per scenario. A doc string that is never closed makes the file fail to index (it is listed as failed with the opening line). ID tags (`@BRD-003`) on a feature, rule or scenario link the tagged ID to the scenarios; `@id:SCN-101` sets a scenario's key.
 
 Link kinds: `parent_of`, `implements`, `verified_by`, `depends_on`, `conflicts_with`, `references`. Explicit links (written in the documents) are authoritative; inferred links (`index --infer`, needs an embedder) never count towards coverage.
 

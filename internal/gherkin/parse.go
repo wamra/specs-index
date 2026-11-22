@@ -57,7 +57,7 @@ func Parse(path string, src []byte) (model.Doc, error) {
 	text := strings.TrimPrefix(string(src), "\xef\xbb\xbf")
 	lines := strings.Split(text, "\n")
 	lastContent := 0
-	docDelim := ""
+	docDelim, docLine := "", 0
 	for i, raw := range lines {
 		no := i + 1
 		line := strings.TrimRight(raw, "\r")
@@ -68,7 +68,7 @@ func Parse(path string, src []byte) (model.Doc, error) {
 
 		if docDelim != "" { // inside a doc string: nothing is parsed
 			if strings.HasPrefix(t, docDelim) {
-				docDelim = ""
+				docDelim, docLine = "", 0
 			}
 			p.addBody(t, no)
 			continue
@@ -86,11 +86,15 @@ func Parse(path string, src []byte) (model.Doc, error) {
 		case t[0] == '|':
 			p.addBody(t, no)
 		case strings.HasPrefix(t, `"""`) || strings.HasPrefix(t, "```"):
-			docDelim = t[:3]
+			docDelim, docLine = t[:3], no
 			p.addBody(t, no)
 		default:
 			p.keywordLine(t, no)
 		}
+	}
+	if docDelim != "" {
+		// Everything after an unclosed delimiter would be swallowed silently.
+		return model.Doc{}, fmt.Errorf("%s:%d: doc string opened with %s is never closed", path, docLine, docDelim)
 	}
 	p.finishScenario()
 	if p.feature >= 0 {

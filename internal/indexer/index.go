@@ -141,6 +141,12 @@ func run(ctx context.Context, st *store.Store, root string, pruneOnly bool) (Rep
 		}
 	}
 	rep.Unchanged = len(files) - touched
+	// Inferred edges have no document, so clearDoc never removes them: drop
+	// those whose end no longer exists.
+	if _, err := r.db.ExecContext(ctx, `DELETE FROM edges WHERE explicit = 0 AND
+		(src_key NOT IN (SELECT key FROM entities) OR dst_key NOT IN (SELECT key FROM entities))`); err != nil {
+		return rep, err
+	}
 	if err := r.db.QueryRow(`SELECT count(*) FROM entities`).Scan(&rep.Entities); err != nil {
 		return rep, err
 	}
@@ -481,6 +487,9 @@ func (r *runner) storeDoc(tx *sql.Tx, docID int64, rel string, doc model.Doc) er
 	owned := map[string]bool{}
 	for _, e := range doc.Entities {
 		if owned[e.Key] {
+			if err := insertRepeat(tx, docID, model.Repeat{Key: e.Key, Line: e.StartLine}); err != nil {
+				return err
+			}
 			continue
 		}
 		var ownerID, ownerDoc int64
@@ -525,6 +534,11 @@ func (r *runner) storeDoc(tx *sql.Tx, docID int64, rel string, doc model.Doc) er
 	if err := r.queueDuplicates(tx, gone, docID); err != nil {
 		return err
 	}
+	for _, rp := range doc.Repeats {
+		if err := insertRepeat(tx, docID, rp); err != nil {
+			return err
+		}
+	}
 	for _, e := range doc.Edges {
 		explicit := 0
 		if e.Explicit {
@@ -536,6 +550,18 @@ func (r *runner) storeDoc(tx *sql.Tx, docID int64, rel string, doc model.Doc) er
 		}
 	}
 	return nil
+}
+
+// insertRepeat records a key defined again in the same document as a
+// duplicate finding.
+func insertRepeat(tx *sql.Tx, docID int64, rp model.Repeat) error {
+	detail := "defined again in the same file"
+	if rp.FirstLine > 0 {
+		detail = fmt.Sprintf("%s (first at line %d)", detail, rp.FirstLine)
+	}
+	_, err := tx.Exec(`INSERT INTO findings(kind, key, doc_id, line, detail) VALUES ('duplicate', ?, ?, ?, ?)`,
+		rp.Key, docID, rp.Line, detail)
+	return err
 }
 
 func storeEntity(tx *sql.Tx, docID int64, rel string, e model.Entity, old map[string]oldEntity) error {

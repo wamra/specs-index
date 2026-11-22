@@ -28,9 +28,18 @@ type Edge struct {
 	Origin         string
 }
 
-// Doc is one parsed source file.
+// Repeat is a later definition of a key already defined earlier in the same
+// file (Line), which the parser folded into the first one (FirstLine).
+type Repeat struct {
+	Key             string
+	Line, FirstLine int
+}
+
+// Doc is one parsed source file. Repeats lists keys defined more than once in
+// it.
 type Doc struct {
 	Path, Type, Version string
 	Entities            []Entity
 	Edges               []Edge
+	Repeats             []Repeat
 }

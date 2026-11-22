@@ -50,6 +50,7 @@ type parser struct {
 	shadows     []*work
 	byKey       map[string]*work
 	stack       []*work // open heading entities, outermost first
+	repeats     []model.Repeat
 }
 
 // Parse parses one Markdown file. path is stored in Doc.Path. types maps ID
@@ -90,6 +91,7 @@ func Parse(path string, src []byte, types map[string]string) (model.Doc, error) 
 		doc.Edges = append(doc.Edges, w.edges...)
 	}
 	doc.Edges = dedupe(doc.Edges)
+	doc.Repeats = p.repeats
 	return doc, nil
 }
 
@@ -216,6 +218,7 @@ func (p *parser) heading(level int, text string, no int) *work {
 		s := &work{owner: w}
 		s.Key = key
 		p.shadows = append(p.shadows, s)
+		p.repeats = append(p.repeats, model.Repeat{Key: key, Line: no, FirstLine: w.StartLine})
 		w = s
 	}
 	w.level = level
@@ -365,7 +368,15 @@ func (p *parser) relation(w *work, name, value string, no int, origin string) bo
 		}
 	case "fds":
 		if w.Type != "acceptance" {
-			return false
+			if !fromHeading {
+				return false // a table column named FDS stays text
+			}
+			// Under any other heading the field still names designs: keep
+			// the link as a plain reference rather than dropping it.
+			for _, id := range findIDs(value) {
+				add(w.Key, id, "references")
+			}
+			return true
 		}
 		for _, id := range findIDs(value) {
 			add(id, w.Key, "verified_by")

@@ -343,3 +343,30 @@ func TestCustomTypesMergeOverDefaults(t *testing.T) {
 		t.Errorf("override of default prefix: %q", got)
 	}
 }
+
+func TestFDSFieldUnderNonAcceptanceIsAReference(t *testing.T) {
+	d := parseStr(t, "## BRD-002 Upload\nStatus: Draft\nFDS: FDS-009\n\nBody.\n")
+	var got []model.Edge
+	for _, e := range d.Edges {
+		if e.Dst == "FDS-009" {
+			got = append(got, e)
+		}
+	}
+	want := []model.Edge{{Src: "BRD-002", Dst: "FDS-009", Kind: "references", Line: 3, Explicit: true, Origin: "field"}}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("edges to FDS-009 = %+v, want %+v", got, want)
+	}
+	// a table column named FDS outside acceptance criteria stays text
+	d = parseStr(t, "| ID | FDS |\n|---|---|\n| BRD-003 | FDS-004 |\n")
+	if len(d.Entities) != 1 || d.Entities[0].Title != "FDS-004" {
+		t.Errorf("table: %+v", d.Entities)
+	}
+}
+
+func TestRepeatedHeadingIsReported(t *testing.T) {
+	d := parseStr(t, "## ZZ-001 First\n\nA.\n\n## ZZ-001 Again\n\nB.\n")
+	want := []model.Repeat{{Key: "ZZ-001", Line: 5, FirstLine: 1}}
+	if !reflect.DeepEqual(d.Repeats, want) {
+		t.Errorf("Repeats = %+v, want %+v", d.Repeats, want)
+	}
+}

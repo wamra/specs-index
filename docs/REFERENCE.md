@@ -53,7 +53,7 @@ Direction `down` (default) follows links away from the key (requirement to desig
 
 ### coverage
 
-Reports, with source lines: requirements without an implementing design; designs without a verifying scenario or criterion; scenarios verifying nothing; dangling IDs (used as the target of a link but never defined); duplicate IDs; explicit conflicts (`Conflicts with`); and candidate conflicts from vector similarity (an empty list without embeddings). Only explicit links count.
+Reports, with source lines: requirements without an implementing design; designs without a verifying scenario or criterion; scenarios verifying nothing; dangling IDs (used as the target of a link but never defined); duplicate IDs (an ID defined in more than one file, or by two headings in one file); explicit conflicts (`Conflicts with`); and candidate conflicts from vector similarity (an empty list without embeddings). Only explicit links count.
 
 ## Search query grammar
 

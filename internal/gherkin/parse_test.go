@@ -357,3 +357,11 @@ func TestBackgroundAndRuleTextInFeatureBody(t *testing.T) {
 		t.Errorf("scenario body leaked background: %q", s.Body)
 	}
 }
+
+func TestUnterminatedDocStringIsAParseError(t *testing.T) {
+	src := "Feature: f\n\n  Scenario: first\n    Given a doc string\n      \"\"\"\n      never closed\n\n  Scenario: lost\n    Given nothing\n"
+	_, err := Parse("x.feature", []byte(src))
+	if err == nil || !strings.Contains(err.Error(), "x.feature:5") || !strings.Contains(err.Error(), "doc string") {
+		t.Fatalf("err = %v, want an unterminated doc string error naming line 5", err)
+	}
+}
