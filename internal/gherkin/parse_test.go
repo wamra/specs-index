@@ -314,3 +314,46 @@ func TestDocTypeAndPath(t *testing.T) {
 		t.Errorf("Path %q Type %q", d.Path, d.Type)
 	}
 }
+
+func TestBackgroundAndRuleTextInFeatureBody(t *testing.T) {
+	d := parseStr(t, `Feature: F
+  Feature description.
+
+  Background: Shared setup
+    Given the shared step
+    And a second shared step
+
+  Rule: Only editors restore
+    Rule description line.
+
+    Scenario: S
+      When own step
+`)
+	if len(d.Entities) != 2 {
+		t.Fatalf("entities = %v, want feature + one scenario", keys(d))
+	}
+	b := entity(t, d, "x.feature").Body
+	want := []string{
+		"Feature description.",
+		"Background: Shared setup",
+		"Given the shared step",
+		"And a second shared step",
+		"Rule: Only editors restore",
+		"Rule description line.",
+	}
+	last := -1
+	for _, w := range want {
+		i := strings.Index(b, w)
+		if i < 0 || i < last {
+			t.Fatalf("body %q: %q missing or out of order", b, w)
+		}
+		last = i
+	}
+	s := entity(t, d, "x.feature#S")
+	if len(s.Steps) != 1 || s.Steps[0].Text != "own step" {
+		t.Errorf("scenario steps = %+v", s.Steps)
+	}
+	if strings.Contains(s.Body, "shared") {
+		t.Errorf("scenario body leaked background: %q", s.Body)
+	}
+}

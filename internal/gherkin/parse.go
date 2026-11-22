@@ -143,13 +143,15 @@ func (p *parser) keywordLine(t string, no int) {
 	if _, ok := afterKeyword(t, "Rule"); ok {
 		p.finishScenario()
 		p.ruleTags, p.pending = p.pending, nil
-		p.featDesc = false
+		p.featDesc = p.feature >= 0
+		p.addFeatureBody(t)
 		return
 	}
 	if _, ok := afterKeyword(t, "Background"); ok {
 		p.finishScenario()
 		p.pending = nil
-		p.featDesc = false
+		p.featDesc = p.feature >= 0
+		p.addFeatureBody(t)
 		return
 	}
 	for _, w := range []string{"Scenario Outline", "Scenario Template", "Scenario", "Example"} {
@@ -188,17 +190,28 @@ func (p *parser) keywordLine(t string, no int) {
 	switch {
 	case p.cur != nil:
 		p.addBody(t, no)
-	case p.featDesc && p.feature >= 0:
-		e := &p.doc.Entities[p.feature]
-		if e.Body != "" {
-			e.Body += "\n"
-		}
-		e.Body += t
+	default:
+		p.addFeatureBody(t)
 	}
+}
+
+// addFeatureBody appends a line to the feature entity's body. It collects the
+// feature description plus Background and Rule text, which have no entity of
+// their own.
+func (p *parser) addFeatureBody(t string) {
+	if !p.featDesc || p.feature < 0 {
+		return
+	}
+	e := &p.doc.Entities[p.feature]
+	if e.Body != "" {
+		e.Body += "\n"
+	}
+	e.Body += t
 }
 
 func (p *parser) addStep(word, text string, no int) {
 	if p.cur == nil { // Background steps belong to no scenario
+		p.addFeatureBody(word + " " + text)
 		return
 	}
 	p.cur.steps = append(p.cur.steps, model.Step{
@@ -210,6 +223,7 @@ func (p *parser) addStep(word, text string, no int) {
 // addBody appends a line of scenario content and extends the scenario span.
 func (p *parser) addBody(t string, no int) {
 	if p.cur == nil {
+		p.addFeatureBody(t)
 		return
 	}
 	p.cur.body = append(p.cur.body, t)
