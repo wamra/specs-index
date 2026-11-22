@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -36,6 +37,13 @@ func setHome(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	t.Setenv("USERPROFILE", home)
+	for _, kv := range os.Environ() { // a developer shell must not change results
+		if k, _, _ := strings.Cut(kv, "="); strings.HasPrefix(k, "SPECS_INDEX_") {
+			t.Setenv(k, "") // registers the restore
+			os.Unsetenv(k)
+		}
+	}
+	t.Setenv("SPECS_INDEX_EMBED_PROVIDER", "none")
 	dir := filepath.Join(home, ".config", "specs-index")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
@@ -314,18 +322,7 @@ func TestToolsMirrorAPI(t *testing.T) {
 func TestShowTraceAndRemove(t *testing.T) {
 	root := newRoot(t)
 	indexed(t, root)
-	st, _ := api.OpenExisting(root)
-	cov, _ := api.Coverage(context.Background(), st)
-	st.Close()
-	if len(cov.RequirementsWithoutDesign)+len(cov.DesignsWithoutVerification) == 0 {
-		t.Skip("corpus has no item to show")
-	}
-	key := ""
-	if len(cov.RequirementsWithoutDesign) > 0 {
-		key = cov.RequirementsWithoutDesign[0].Key
-	} else {
-		key = cov.DesignsWithoutVerification[0].Key
-	}
+	const key = "BRD-002" // a requirement of the corpus (see the search test)
 	msgs := serve(t, root,
 		call(1, "show", `{"key":"`+key+`"}`),
 		call(2, "trace", `{"key":"`+key+`","direction":"both","depth":2,"kinds":["implements"],"include_inferred":true}`),
@@ -336,8 +333,17 @@ func TestShowTraceAndRemove(t *testing.T) {
 			t.Errorf("call %s failed: %s", id, r.Content[0].Text)
 		}
 	}
+	if got := result(t, byID(t, msgs, "1")).Content[0].Text; !strings.Contains(got, `"key": "`+key+`"`) {
+		t.Errorf("show did not return %s: %s", key, got)
+	}
+	if got := result(t, byID(t, msgs, "2")).Content[0].Text; !strings.Contains(got, `"key": "`+key+`"`) {
+		t.Errorf("trace root is not %s: %s", key, got)
+	}
 	if r := result(t, byID(t, msgs, "3")); !r.IsError {
 		t.Error("an unknown key must be a tool error")
+	}
+	if got := result(t, byID(t, msgs, "4")).Content[0].Text; strings.Contains(got, `"features"`) && !strings.Contains(got, `"changed"`) {
+		t.Errorf("remove_source result: %s", got)
 	}
 }
 
@@ -431,23 +437,19 @@ func TestAddSourceOutsideRootRefused(t *testing.T) {
 		b, _ := json.Marshal(map[string]string{"path": a})
 		lines = append(lines, call(i+1, "add_source", string(b)))
 	}
-	msgs := serve(t, root, append(lines, call(99, "status", ""))...)
+	msgs := serve(t, root, lines...)
 	for i, a := range args {
 		r := result(t, byID(t, msgs, string(rune('0'+i+1))))
 		if !r.IsError || !strings.Contains(r.Content[0].Text, "outside") {
 			t.Errorf("add_source %q: want an 'outside' refusal, got %+v", a, r)
 		}
 	}
-	// nothing was registered
-	if r := result(t, byID(t, msgs, "99")); r.IsError && !strings.Contains(r.Content[0].Text, "run") {
-		t.Errorf("unexpected status error: %s", r.Content[0].Text)
+	// A refusal must leave no trace: no index file was even created.
+	if _, err := os.Stat(os.Getenv("SPECS_INDEX_DB")); err == nil {
+		t.Error("a refused add_source created the index file")
 	}
-	st, err := api.OpenExisting(root)
-	if err == nil {
-		defer st.Close()
-		if s, _ := api.Sources(st); len(s.Sources) != 0 {
-			t.Errorf("a refused path was registered: %+v", s.Sources)
-		}
+	if _, err := api.OpenExisting(root); !errors.Is(err, api.ErrNoIndex) {
+		t.Errorf("want ErrNoIndex after only refused paths, got %v", err)
 	}
 }
 
@@ -557,5 +559,136 @@ func TestRootFromEnv(t *testing.T) {
 	t.Chdir(sub)
 	if got, err := RootFromEnv(); err != nil || got != repo {
 		t.Errorf("cwd fallback: want %s, got %s (%v)", repo, got, err)
+	}
+}
+
+func ioPipeForTest() (*io.PipeReader, *io.PipeWriter) { return io.Pipe() }
+
+func TestIDEchoAndNullID(t *testing.T) {
+	msgs := serve(t, newRoot(t),
+		`{"jsonrpc":"2.0","id":"abc-1","method":"ping"}`,
+		`{"jsonrpc":"2.0","id":1.5,"method":"ping"}`,
+		`{"jsonrpc":"2.0","id":9007199254740993,"method":"ping"}`,
+		`{"jsonrpc":"2.0","id":null,"method":"ping"}`,
+		call(0, "status", ""))
+	for _, id := range []string{`"abc-1"`, `1.5`, `9007199254740993`, `0`} {
+		byID(t, msgs, id)
+	}
+	var nulls int
+	for _, m := range msgs {
+		if string(m.ID) == "null" {
+			nulls++
+			if m.Error == nil || m.Error.Code != -32600 {
+				t.Errorf("id null must be -32600, got %+v", m.Error)
+			}
+		}
+	}
+	if nulls != 1 || len(msgs) != 5 {
+		t.Errorf("want 5 messages with exactly one null-id error, got %d / %d", len(msgs), nulls)
+	}
+}
+
+func TestModernToolsCallCarriesResultType(t *testing.T) {
+	root := newRoot(t)
+	meta := `"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28"}`
+	msgs := serve(t, root,
+		`{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"status","arguments":{},`+meta+`}}`,
+		`{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"nope",`+meta+`}}`,
+		`{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"status","_meta":{"io.modelcontextprotocol/protocolVersion":"1900-01-01"}}}`)
+	var r map[string]json.RawMessage
+	if err := json.Unmarshal(byID(t, msgs, "1").Result, &r); err != nil {
+		t.Fatal(err)
+	}
+	if string(r["resultType"]) != `"complete"` || r["content"] == nil || r["_meta"] == nil {
+		t.Errorf("modern tools/call result: %s", byID(t, msgs, "1").Result)
+	}
+	if m := byID(t, msgs, "2"); m.Error == nil || m.Error.Code != -32602 {
+		t.Errorf("modern unknown tool: %+v", m.Error)
+	}
+	if m := byID(t, msgs, "3"); m.Error == nil || m.Error.Code != -32022 {
+		t.Errorf("modern tools/call with an unsupported version: %+v", m.Error)
+	}
+}
+
+func TestIntegerArguments(t *testing.T) {
+	root := newRoot(t)
+	indexed(t, root)
+	msgs := serve(t, root,
+		call(1, "search", `{"query":"upload","k":2.0}`),
+		call(2, "search", `{"query":"upload","k":2.5}`),
+		call(3, "search", `{"query":"upload","k":"2"}`),
+		call(4, "trace", `{"key":"BRD-002","depth":3.0}`),
+		call(5, "trace", `{"key":"BRD-002","depth":1.5}`),
+		call(6, "search", `{"query":"upload","k":0}`),
+		call(7, "search", `{"Query":"upload"}`),
+		call(8, "search", `{"query":"upload","k":null}`))
+	for _, id := range []string{"1", "4", "8"} {
+		if r := result(t, byID(t, msgs, id)); r.IsError {
+			t.Errorf("call %s should succeed: %s", id, r.Content[0].Text)
+		}
+	}
+	want := map[string]string{"2": `"k"`, "3": `"k"`, "5": `"depth"`, "6": `"k"`, "7": `"Query"`}
+	for id, name := range want {
+		r := result(t, byID(t, msgs, id))
+		if !r.IsError || !strings.Contains(r.Content[0].Text, name) || strings.Contains(r.Content[0].Text, "json:") {
+			t.Errorf("call %s: want an isError naming %s without Go internals, got %q", id, name, r.Content[0].Text)
+		}
+	}
+	var res api.SearchResult
+	if err := json.Unmarshal([]byte(result(t, byID(t, msgs, "1")).Content[0].Text), &res); err != nil || len(res.Hits) > 2 {
+		t.Errorf("k=2.0 not honoured: %d hits (%v)", len(res.Hits), err)
+	}
+}
+
+func TestInvalidArgumentsFromAPIAreToolErrors(t *testing.T) {
+	root := newRoot(t)
+	indexed(t, root)
+	msgs := serve(t, root, call(1, "trace", `{"key":"BRD-002","kinds":["bogus"]}`))
+	r := result(t, byID(t, msgs, "1"))
+	if !r.IsError || !strings.Contains(r.Content[0].Text, "bogus") {
+		t.Errorf("want an isError naming the bad kind, got %+v", r)
+	}
+}
+
+func TestAnnotationsFollowTheNegotiatedRevision(t *testing.T) {
+	root := newRoot(t)
+	hints := func(msgs []rpcMsg, id string) map[string]map[string]any {
+		var l struct {
+			Tools []struct {
+				Name        string         `json:"name"`
+				Annotations map[string]any `json:"annotations"`
+			} `json:"tools"`
+		}
+		if err := json.Unmarshal(byID(t, msgs, id).Result, &l); err != nil {
+			t.Fatal(err)
+		}
+		out := map[string]map[string]any{}
+		for _, tl := range l.Tools {
+			out[tl.Name] = tl.Annotations
+		}
+		return out
+	}
+	m := serve(t, root,
+		`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25"}}`,
+		`{"jsonrpc":"2.0","id":2,"method":"tools/list"}`)
+	h := hints(m, "2")
+	if h["search"]["readOnlyHint"] != true || h["search"]["openWorldHint"] != false {
+		t.Errorf("search annotations: %v", h["search"])
+	}
+	for _, n := range []string{"add_source", "remove_source", "index"} {
+		if h[n]["readOnlyHint"] != false || h[n]["destructiveHint"] != false {
+			t.Errorf("%s annotations: %v", n, h[n])
+		}
+	}
+	if _, ok := h["search"]["destructiveHint"]; ok {
+		t.Error("destructiveHint is meaningless on a read-only tool")
+	}
+	old := serve(t, root,
+		`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05"}}`,
+		`{"jsonrpc":"2.0","id":2,"method":"tools/list"}`)
+	for n, a := range hints(old, "2") {
+		if a != nil {
+			t.Errorf("2024-11-05 has no tool annotations, %s sent %v", n, a)
+		}
 	}
 }

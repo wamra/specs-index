@@ -102,11 +102,30 @@ type server struct {
 
 	mu       sync.Mutex
 	inflight map[string]*inflight // by raw request id
+	version  string               // negotiated handshake revision ("" before initialize)
+	fatalErr error                // first stdout write failure
+	stop     context.CancelFunc   // ends Serve
+}
+
+func newServer(root string, out io.Writer, log io.Writer) *server {
+	enc := json.NewEncoder(out)
+	enc.SetEscapeHTML(false)
+	return &server{root: root, log: log, enc: enc, inflight: map[string]*inflight{}, stop: func() {}}
+}
+
+// fatal records a stdout write failure (the client closed the pipe) and ends
+// Serve: there is nobody left to answer.
+func (s *server) fatal(err error) {
+	s.mu.Lock()
+	if s.fatalErr == nil {
+		s.fatalErr = err
+	}
+	s.mu.Unlock()
+	s.stop()
 }
 
 type inflight struct {
-	cancel    context.CancelFunc
-	cancelled bool
+	cancel context.CancelFunc
 }
 
 type job struct {
@@ -127,9 +146,8 @@ type job struct {
 func Serve(ctx context.Context, in io.Reader, out io.Writer, root string) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	enc := json.NewEncoder(out)
-	enc.SetEscapeHTML(false)
-	s := &server{root: root, log: os.Stderr, enc: enc, inflight: map[string]*inflight{}}
+	s := newServer(root, out, os.Stderr)
+	s.stop = cancel
 
 	lines := make(chan lineMsg)
 	go readLines(ctx, in, lines)
@@ -170,6 +188,11 @@ loop:
 	}
 	close(jobs)
 	<-workerDone
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if werr == nil {
+		werr = s.fatalErr
+	}
 	return werr
 }
 
@@ -265,6 +288,9 @@ func (s *server) handleLine(ctx context.Context, m lineMsg, jobs chan<- job) err
 		}
 		return s.fail(req.ID, codeInvalidRequest, "invalid request: no method", nil)
 	}
+	if string(req.ID) == "null" {
+		return s.fail(nil, codeInvalidRequest, "invalid request: id must not be null", nil)
+	}
 	isNotification := len(req.ID) == 0
 	if isNotification {
 		s.notification(req)
@@ -290,7 +316,7 @@ func (s *server) handleLine(ctx context.Context, m lineMsg, jobs chan<- job) err
 		}, true))
 	case "tools/list":
 		return s.reply(req.ID, s.decorate(map[string]any{
-			"tools":      toolList(),
+			"tools":      toolList(modern || s.annotationsAllowed()),
 			"ttlMs":      3600000,
 			"cacheScope": "public",
 		}, modern))
@@ -344,6 +370,14 @@ func (s *server) decorate(res map[string]any, modern bool) map[string]any {
 	return res
 }
 
+// annotationsAllowed says whether tool annotations exist in the revision
+// negotiated by initialize (added in 2025-03-26; 2024-11-05 has none).
+func (s *server) annotationsAllowed() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.version != "2024-11-05"
+}
+
 func (s *server) initialize(params json.RawMessage) map[string]any {
 	var p struct {
 		ProtocolVersion string `json:"protocolVersion"`
@@ -355,6 +389,9 @@ func (s *server) initialize(params json.RawMessage) map[string]any {
 			v = sv
 		}
 	}
+	s.mu.Lock()
+	s.version = v
+	s.mu.Unlock()
 	return map[string]any{
 		"protocolVersion": v,
 		"capabilities":    map[string]any{"tools": map[string]any{"listChanged": false}},
@@ -376,9 +413,6 @@ func (s *server) notification(req request) {
 	}
 	s.mu.Lock()
 	fl := s.inflight[string(p.RequestID)]
-	if fl != nil {
-		fl.cancelled = true
-	}
 	s.mu.Unlock()
 	if fl != nil {
 		fl.cancel()
@@ -391,16 +425,17 @@ func (s *server) done(id json.RawMessage) {
 	s.mu.Unlock()
 }
 
-// runJob executes one tools/call and writes its single response, unless the
-// client cancelled it (a cancelled request gets no further message).
+// runJob executes one tools/call and writes its single response. A call that
+// was cancelled (by the client, or because Serve is shutting down) before it
+// started does not run, and one cancelled while running gets no response.
 func (s *server) runJob(j job) {
 	defer j.fl.cancel()
 	defer s.done(j.id)
+	if j.ctx.Err() != nil {
+		return
+	}
 	resp, rerr := s.callTool(j.ctx, j.params)
-	s.mu.Lock()
-	cancelled := j.fl.cancelled
-	s.mu.Unlock()
-	if cancelled {
+	if j.ctx.Err() != nil {
 		return
 	}
 	var err error
@@ -410,6 +445,7 @@ func (s *server) runJob(j job) {
 		err = s.reply(j.id, s.decorate(resp, j.modern))
 	}
 	if err != nil {
-		fmt.Fprintf(s.log, "specs-index mcp: write failed: %v\n", err)
+		fmt.Fprintf(s.log, "specs-index mcp: write failed, stopping: %v\n", err)
+		s.fatal(err)
 	}
 }

@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"syscall"
 
 	"github.com/wamra/specs-index/internal/mcp"
 )
@@ -26,7 +27,7 @@ func cmdMCP(args []string, out, errw io.Writer) int {
 	var vbuf bytes.Buffer
 	cmdVersion(nil, &vbuf, errw)
 	mcp.ServerVersion = strings.TrimSpace(strings.TrimPrefix(vbuf.String(), "specs-index"))
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	fmt.Fprintf(errw, "specs-index mcp: serving project %s on stdio\n", root)
 	if err := mcp.Serve(ctx, os.Stdin, out, root); err != nil {

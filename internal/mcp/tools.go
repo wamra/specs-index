@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"strings"
 
@@ -41,6 +42,8 @@ type tool struct {
 	name        string
 	description string
 	readOnly    bool
+	writes      bool // changes the local index (destructiveHint false)
+	openWorld   bool // may contact the configured embedding provider
 	props       map[string]any
 	required    []string
 	run         func(ctx context.Context, s *server, args json.RawMessage) (any, error)
@@ -59,6 +62,7 @@ var tools = []tool{
 		name: "add_source",
 		description: "Register a file or directory of Markdown requirement/design documents or Gherkin .feature files as a source of the index. " +
 			"The path must be inside the project root. Run index afterwards; sources are only read, never modified.",
+		writes:   true,
 		props:    map[string]any{"path": str("File or directory to register, relative to the project root (or absolute, but inside it), for example \"docs\" or \"features\".")},
 		required: []string{"path"},
 		run:      toolAddSource,
@@ -67,6 +71,7 @@ var tools = []tool{
 		name: "remove_source",
 		description: "Unregister a source added with add_source and drop the indexed documents that no remaining source covers. " +
 			"The files on disk are not touched.",
+		writes:   true,
 		props:    map[string]any{"path": str("The source path to unregister, as listed by status or add_source (relative to the project root).")},
 		required: []string{"path"},
 		run:      toolRemoveSource,
@@ -75,6 +80,8 @@ var tools = []tool{
 		name: "index",
 		description: "Bring the index up to date with the registered sources and embed new text for semantic search when an embedder is configured. " +
 			"Run it after add_source or remove_source, and whenever search or show results are marked stale; without an embedder the index is text-only and the result says so.",
+		writes:    true,
+		openWorld: true,
 		props: map[string]any{"reembed": map[string]any{"type": "boolean",
 			"description": "Discard every stored vector and embed all text again. Only needed after the embedding model changed; fails without touching vectors when no embedder answers. Default false."}},
 		run: toolIndex,
@@ -135,7 +142,7 @@ var tools = []tool{
 }
 
 // toolList is the tools/list payload.
-func toolList() []map[string]any {
+func toolList(annotations bool) []map[string]any {
 	out := make([]map[string]any, 0, len(tools))
 	for _, t := range tools {
 		props := t.props
@@ -146,12 +153,15 @@ func toolList() []map[string]any {
 		if len(t.required) > 0 {
 			schema["required"] = t.required
 		}
-		out = append(out, map[string]any{
-			"name":        t.name,
-			"description": t.description,
-			"inputSchema": schema,
-			"annotations": map[string]any{"readOnlyHint": t.readOnly},
-		})
+		entry := map[string]any{"name": t.name, "description": t.description, "inputSchema": schema}
+		if annotations { // ToolAnnotations exist from 2025-03-26 on
+			a := map[string]any{"readOnlyHint": t.readOnly, "openWorldHint": t.openWorld}
+			if t.writes {
+				a["destructiveHint"] = false // only the local index changes; sources are never modified
+			}
+			entry["annotations"] = a
+		}
+		out = append(out, entry)
 	}
 	return out
 }
@@ -175,6 +185,9 @@ func (s *server) callTool(ctx context.Context, params json.RawMessage) (res map[
 	}
 	if t == nil {
 		return nil, &rpcError{Code: codeInvalidParams, Message: "Unknown tool: " + p.Name}
+	}
+	if err := checkArgNames(t, p.Arguments); err != nil {
+		return textResult(err.Error(), true), nil
 	}
 	defer func() {
 		if r := recover(); r != nil {
@@ -205,6 +218,42 @@ func textResult(text string, isError bool) map[string]any {
 		r["isError"] = true
 	}
 	return r
+}
+
+// checkArgNames requires the arguments to be an object whose keys are exactly
+// (case-sensitively) the properties the tool's inputSchema declares.
+func checkArgNames(t *tool, raw json.RawMessage) error {
+	if len(bytes.TrimSpace(raw)) == 0 || string(bytes.TrimSpace(raw)) == "null" {
+		return nil
+	}
+	var m map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &m); err != nil {
+		return errors.New("invalid arguments: arguments must be a JSON object")
+	}
+	for k := range m {
+		if _, ok := t.props[k]; !ok {
+			return fmt.Errorf("invalid arguments: unknown argument %q", k)
+		}
+	}
+	return nil
+}
+
+// intArg parses an optional integer argument. Integer-valued JSON numbers such
+// as 5.0 are accepted (JSON Schema "integer"); fractions and non-numbers are
+// refused naming the argument as the client knows it.
+func intArg(name string, raw json.RawMessage, lo, hi int) (*int, error) {
+	if len(raw) == 0 || string(raw) == "null" {
+		return nil, nil
+	}
+	var f float64
+	if json.Unmarshal(raw, &f) != nil || f != math.Trunc(f) {
+		return nil, fmt.Errorf("invalid arguments: %q must be an integer", name)
+	}
+	if f < float64(lo) || f > float64(hi) {
+		return nil, fmt.Errorf("invalid arguments: %q must be between %d and %d", name, lo, hi)
+	}
+	n := int(f)
+	return &n, nil
 }
 
 // decodeArgs strictly decodes the tool arguments: an absent or null value is
@@ -268,23 +317,31 @@ type pathArgs struct {
 	Path string `json:"path"`
 }
 
-func toolAddSource(_ context.Context, s *server, raw json.RawMessage) (any, error) {
+func toolAddSource(ctx context.Context, s *server, raw json.RawMessage) (any, error) {
 	var a pathArgs
 	if err := decodeArgs(raw, &a); err != nil {
 		return nil, err
 	}
 	p, err := needText("path", a.Path)
 	if err != nil {
+		return nil, err
+	}
+	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
 	// Refuse before anything is created on disk; api.Add checks again.
 	if _, err := workspace.Rel(s.root, p); err != nil {
 		return nil, err
 	}
-	return s.withWrite(func(st *store.Store) (any, error) { return api.Add(st, s.root, s.root, []string{p}) })
+	return s.withWrite(func(st *store.Store) (any, error) {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		return api.Add(st, s.root, s.root, []string{p})
+	})
 }
 
-func toolRemoveSource(_ context.Context, s *server, raw json.RawMessage) (any, error) {
+func toolRemoveSource(ctx context.Context, s *server, raw json.RawMessage) (any, error) {
 	var a pathArgs
 	if err := decodeArgs(raw, &a); err != nil {
 		return nil, err
@@ -293,7 +350,15 @@ func toolRemoveSource(_ context.Context, s *server, raw json.RawMessage) (any, e
 	if err != nil {
 		return nil, err
 	}
-	return s.withRead(func(st *store.Store) (any, error) { return api.Remove(st, s.root, s.root, []string{p}) })
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	return s.withRead(func(st *store.Store) (any, error) {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		return api.Remove(st, s.root, s.root, []string{p})
+	})
 }
 
 func toolIndex(ctx context.Context, s *server, raw json.RawMessage) (any, error) {
@@ -316,9 +381,9 @@ func toolIndex(ctx context.Context, s *server, raw json.RawMessage) (any, error)
 
 func toolSearch(ctx context.Context, s *server, raw json.RawMessage) (any, error) {
 	var a struct {
-		Query string `json:"query"`
-		Mode  string `json:"mode"`
-		K     *int   `json:"k"`
+		Query string          `json:"query"`
+		Mode  string          `json:"mode"`
+		K     json.RawMessage `json:"k"`
 	}
 	if err := decodeArgs(raw, &a); err != nil {
 		return nil, err
@@ -327,24 +392,23 @@ func toolSearch(ctx context.Context, s *server, raw json.RawMessage) (any, error
 	if err != nil {
 		return nil, err
 	}
-	switch a.Mode {
-	case "", "auto", "exact", "fts", "vector", "hybrid":
-	default:
-		return nil, fmt.Errorf("invalid arguments: mode %q is not one of auto, exact, fts, vector, hybrid", a.Mode)
+	opts := api.SearchOptions{Mode: a.Mode, K: defaultK}
+	if err := api.ValidateSearchOptions(opts); err != nil {
+		return nil, err
 	}
-	k := defaultK
-	if a.K != nil {
-		if *a.K < 1 || *a.K > maxK {
-			return nil, fmt.Errorf("invalid arguments: k must be between 1 and %d", maxK)
-		}
-		k = *a.K
+	k, err := intArg("k", a.K, 1, maxK)
+	if err != nil {
+		return nil, err
+	}
+	if k != nil {
+		opts.K = *k
 	}
 	cfg, err := s.loadConfig()
 	if err != nil {
 		return nil, err
 	}
 	return s.withRead(func(st *store.Store) (any, error) {
-		return api.Search(ctx, st, s.root, q, cfg, api.SearchOptions{Mode: a.Mode, K: k})
+		return api.Search(ctx, st, s.root, q, cfg, opts)
 	})
 }
 
@@ -364,11 +428,11 @@ func toolShow(ctx context.Context, s *server, raw json.RawMessage) (any, error) 
 
 func toolTrace(ctx context.Context, s *server, raw json.RawMessage) (any, error) {
 	var a struct {
-		Key             string   `json:"key"`
-		Direction       string   `json:"direction"`
-		Depth           *int     `json:"depth"`
-		Kinds           []string `json:"kinds"`
-		IncludeInferred bool     `json:"include_inferred"`
+		Key             string          `json:"key"`
+		Direction       string          `json:"direction"`
+		Depth           json.RawMessage `json:"depth"`
+		Kinds           []string        `json:"kinds"`
+		IncludeInferred bool            `json:"include_inferred"`
 	}
 	if err := decodeArgs(raw, &a); err != nil {
 		return nil, err
@@ -377,20 +441,19 @@ func toolTrace(ctx context.Context, s *server, raw json.RawMessage) (any, error)
 	if err != nil {
 		return nil, err
 	}
-	switch a.Direction {
-	case "", "down", "up", "both":
-	default:
-		return nil, fmt.Errorf("invalid arguments: direction %q is not one of down, up, both", a.Direction)
+	opts := api.TraceOptions{Direction: a.Direction, Depth: 5 /* the CLI default */, Kinds: a.Kinds, IncludeInferred: a.IncludeInferred}
+	if err := api.ValidateTraceOptions(opts); err != nil {
+		return nil, err
 	}
-	depth := 5 // the CLI default
-	if a.Depth != nil {
-		if *a.Depth < 1 || *a.Depth > maxDepth {
-			return nil, fmt.Errorf("invalid arguments: depth must be between 1 and %d", maxDepth)
-		}
-		depth = *a.Depth
+	depth, err := intArg("depth", a.Depth, 1, maxDepth)
+	if err != nil {
+		return nil, err
+	}
+	if depth != nil {
+		opts.Depth = *depth
 	}
 	return s.withRead(func(st *store.Store) (any, error) {
-		return api.Trace(ctx, st, key, api.TraceOptions{Direction: a.Direction, Depth: depth, Kinds: a.Kinds, IncludeInferred: a.IncludeInferred})
+		return api.Trace(ctx, st, key, opts)
 	})
 }
 
