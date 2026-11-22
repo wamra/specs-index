@@ -5,12 +5,16 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/wamra/specs-index/internal/config"
+	"github.com/wamra/specs-index/internal/embed"
 	"github.com/wamra/specs-index/internal/graph"
+	"github.com/wamra/specs-index/internal/provider"
 	"github.com/wamra/specs-index/internal/search"
 	"github.com/wamra/specs-index/internal/store"
 )
@@ -49,64 +53,89 @@ type SearchResult struct {
 	Notice string `json:"notice,omitempty"`
 }
 
+// ValidateSearchOptions rejects an unknown mode with ErrInvalidArgument.
+func ValidateSearchOptions(o SearchOptions) error {
+	switch o.Mode {
+	case "", "auto", "exact", "fts", "vector", "hybrid":
+		return nil
+	}
+	return fmt.Errorf("%w: unknown search mode %q (use auto, exact, fts, vector or hybrid)", ErrInvalidArgument, o.Mode)
+}
+
+// QueryEmbedTimeout bounds the embedding of a search query. In auto mode a
+// timeout degrades to full text with a notice; in vector and hybrid mode it is
+// an error. A variable so tests can shorten it.
+var QueryEmbedTimeout = 5 * time.Second
+
 // Search runs query against the index. In auto mode a missing or cloud-blocked
-// embedder means full text; vector and hybrid modes report the refusal.
+// embedder, an unreachable or unresponsive one, or an embedder that differs from
+// the one the index was built with means exact and full-text results plus a
+// notice; vector and hybrid modes report the problem as an error. Database
+// errors are errors in every mode.
 func Search(ctx context.Context, st *store.Store, root, query string, cfg config.Config, o SearchOptions) (SearchResult, error) {
 	mode := o.Mode
 	if mode == "" {
 		mode = "auto"
 	}
 	res := SearchResult{Query: query, Mode: mode, Hits: []HitInfo{}, Notes: []string{}}
+	if err := ValidateSearchOptions(o); err != nil {
+		return res, err
+	}
 	// A query that is exactly an entity key (any key, including scenario keys
 	// and feature paths) finds that entity first.
 	var exact []search.Hit
 	if mode != "fts" {
 		if k := strings.TrimSpace(query); k != "" {
-			exact, _ = search.Search(ctx, st, search.Query{IDs: []string{k}}, search.Options{Mode: "exact", K: 1, Root: root})
-		}
-	}
-	q, err := search.ParseQuery(query)
-	if err != nil && len(exact) == 0 {
-		return res, err
-	}
-	if err != nil {
-		q = search.Query{}
-	}
-	emb, state, note, err := SetupEmbedder(cfg, o.AllowCloud)
-	if err != nil {
-		return res, err
-	}
-	if state == EmbedCloudBlocked {
-		if mode == "vector" || mode == "hybrid" {
-			return res, errors.New(note)
-		}
-		res.Notes = append(res.Notes, "full text only: "+note)
-	}
-	var hits []search.Hit
-	if len(exact) > 0 && q.Text == "" && len(q.IDs) == 0 && len(q.Filters) == 0 && len(q.Has) == 0 && len(q.HasNot) == 0 && len(q.Exclude) == 0 {
-		hits = exact // the parsed query adds nothing beyond the key
-	} else {
-		var notice string
-		hits, err = search.Search(ctx, st, q, search.Options{Mode: mode, K: o.K, Root: root, Embedder: emb, Notice: &notice})
-		if err != nil {
-			if len(exact) == 0 {
+			var err error
+			if exact, err = search.Search(ctx, st, search.Query{IDs: []string{k}}, search.Options{Mode: "exact", K: 1, Root: root}); err != nil {
 				return res, err
 			}
-			hits = nil
 		}
-		res.Notice = notice
-		if len(exact) > 0 {
-			merged := append([]search.Hit{}, exact...)
-			for _, h := range hits {
-				if h.Key != exact[0].Key {
-					merged = append(merged, h)
+	}
+	q, perr := search.ParseQuery(query)
+	if perr != nil && len(exact) == 0 {
+		return res, perr
+	}
+	var hits []search.Hit
+	if perr == nil {
+		emb, state, note, err := SetupEmbedder(cfg, o.AllowCloud)
+		if err != nil {
+			return res, err
+		}
+		if state == EmbedCloudBlocked {
+			if mode == "vector" || mode == "hybrid" {
+				return res, errors.New(note)
+			}
+			res.Notes = append(res.Notes, "full text only: "+note)
+		}
+		if emb != nil {
+			emb = timedEmbedder{emb, QueryEmbedTimeout}
+			if mode == "vector" || mode == "hybrid" {
+				// search skips the vector side for a pure-ID query, so check the
+				// embedder here: an explicit vector mode must not succeed silently
+				// with an embedder that does not match the index.
+				if err := embed.CheckFingerprint(ctx, st, emb); err != nil {
+					return res, err
 				}
 			}
-			if k := o.K; k > 0 && len(merged) > k {
-				merged = merged[:k]
-			}
-			hits = merged
 		}
+		var notice string
+		if hits, err = search.Search(ctx, st, q, search.Options{Mode: mode, K: o.K, Root: root, Embedder: emb, Notice: &notice}); err != nil {
+			return res, err
+		}
+		res.Notice = notice
+	}
+	if len(exact) > 0 {
+		merged := append([]search.Hit{}, exact...)
+		for _, h := range hits {
+			if h.Key != exact[0].Key {
+				merged = append(merged, h)
+			}
+		}
+		if k := o.K; k > 0 && len(merged) > k {
+			merged = merged[:k]
+		}
+		hits = merged
 	}
 	for _, h := range hits {
 		res.Hits = append(res.Hits, HitInfo{
@@ -115,6 +144,44 @@ func Search(ctx context.Context, st *store.Store, root, query string, cfg config
 		})
 	}
 	return res, nil
+}
+
+// timedEmbedder bounds every call to the embedder made on behalf of a search
+// (the query embedding and the dimension probe). A timeout is reported as
+// provider.ErrDown saying the embedder is unresponsive, so auto mode degrades
+// with a notice and explicit modes fail.
+type timedEmbedder struct {
+	embed.Embedder
+	d time.Duration
+}
+
+func (t timedEmbedder) bound(ctx context.Context, call func(context.Context) error) error {
+	cctx, cancel := context.WithTimeout(ctx, t.d)
+	defer cancel()
+	err := call(cctx)
+	if err != nil && cctx.Err() == context.DeadlineExceeded && ctx.Err() == nil {
+		return fmt.Errorf("%w: the embedder is unresponsive (no answer within %s)", provider.ErrDown, t.d)
+	}
+	return err
+}
+
+func (t timedEmbedder) Embed(ctx context.Context, texts []string) (out [][]float32, err error) {
+	err = t.bound(ctx, func(c context.Context) (e error) { out, e = t.Embedder.Embed(c, texts); return })
+	return
+}
+
+func (t timedEmbedder) EmbedQuery(ctx context.Context, q string) (out []float32, err error) {
+	err = t.bound(ctx, func(c context.Context) (e error) { out, e = t.Embedder.EmbedQuery(c, q); return })
+	return
+}
+
+// Detect forwards the dimension probe when the embedder has one.
+func (t timedEmbedder) Detect(ctx context.Context) error {
+	d, ok := t.Embedder.(interface{ Detect(context.Context) error })
+	if !ok {
+		return nil
+	}
+	return t.bound(ctx, d.Detect)
 }
 
 // EdgeInfo is one edge as seen from an entity: Key is the entity at the other

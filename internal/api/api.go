@@ -18,6 +18,11 @@ import (
 	"github.com/wamra/specs-index/internal/workspace"
 )
 
+// ErrInvalidArgument marks an invalid flag or parameter value (an unknown
+// mode, direction or edge kind, or a contradictory combination). The CLI maps
+// it to exit code 2.
+var ErrInvalidArgument = errors.New("invalid argument")
+
 // ErrNoIndex is returned by OpenExisting when the index file is missing.
 var ErrNoIndex = errors.New("no index")
 

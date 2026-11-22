@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 
@@ -23,6 +24,9 @@ func cmdIndex(args []string, out, errw io.Writer) int {
 	if len(pos) != 0 {
 		return usageErr(errw, "index takes no arguments (it indexes the registered sources; see `add`)")
 	}
+	if o.NoEmbed && (o.Reembed || o.Infer) {
+		return usageErr(errw, "index: --no-embed cannot be combined with --reembed or --infer")
+	}
 	cfg, err := loadConfig()
 	if err != nil {
 		return fail(errw, err)
@@ -31,7 +35,12 @@ func cmdIndex(args []string, out, errw io.Writer) int {
 	if err != nil {
 		return fail(errw, err)
 	}
-	st, err := api.OpenForWrite(root)
+	// Without an index there are no sources either: explain before creating
+	// the database or touching the git exclude file.
+	st, err := api.OpenExisting(root)
+	if errors.Is(err, api.ErrNoIndex) {
+		return fail(errw, api.ErrNoSources)
+	}
 	if err != nil {
 		return fail(errw, err)
 	}

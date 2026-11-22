@@ -4,12 +4,17 @@ import (
 	"bytes"
 	"encoding/json"
 	"flag"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/wamra/specs-index/internal/api"
+	"github.com/wamra/specs-index/internal/config"
 	"github.com/wamra/specs-index/internal/corpus"
 	"github.com/wamra/specs-index/internal/embedtest"
 )
@@ -23,6 +28,12 @@ func setHome(t *testing.T) string {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	t.Setenv("USERPROFILE", home)
+	for _, kv := range os.Environ() { // a developer shell must not change results
+		if k, _, _ := strings.Cut(kv, "="); strings.HasPrefix(k, "SPECS_INDEX_") {
+			t.Setenv(k, "") // registers the restore
+			os.Unsetenv(k)
+		}
+	}
 	writeConfig(t, home, `{"provider":{"embed":"none"}}`)
 	return home
 }
@@ -302,15 +313,25 @@ func TestUsageErrorsExit2(t *testing.T) {
 		{"config", "bogus"},
 		{"coverage", "--root", root, "extra"},
 		{"trace", "BRD-001", "--root", root, "--depth", "abc"},
+		{"search", "x", "--root", root, "--k", "abc"},
+		{"search", "x", "--root", root, "--mode", "bogus"},
+		{"trace", "BRD-001", "--root", root, "--direction", "sideways"},
+		{"trace", "BRD-001", "--root", root, "--kinds", "implements,bogus"},
+		{"index", "--root", root, "--no-embed", "--reembed"},
+		{"index", "--root", root, "--no-embed", "--infer"},
 	} {
 		if code, _, errw := cli(t, args...); code != 2 {
 			t.Errorf("%v: exit %d, want 2 (stderr %q)", args, code, errw)
 		}
 	}
-	// a bad value that is not a usage error is exit 1
 	indexedRoot := indexed(t)
-	if code, _, _ := cli(t, "trace", "BRD-001", "--root", indexedRoot, "--direction", "sideways"); code != 1 {
-		t.Errorf("bad direction: exit %d, want 1", code)
+	for _, args := range [][]string{
+		{"search", "x", "--mode", "bogus"}, {"trace", "BRD-001", "--direction", "sideways"},
+		{"trace", "BRD-001", "--kinds", "bogus"}, {"index", "--no-embed", "--reembed"},
+	} {
+		if code, _, _ := cli(t, append(args, "--root", indexedRoot)...); code != 2 {
+			t.Errorf("%v on an index: exit %d, want 2", args, code)
+		}
 	}
 	if code, _, errw := cli(t, "trace", "BRD-00", "--root", indexedRoot); code != 1 || !strings.Contains(errw, "BRD-001") {
 		t.Errorf("unknown key: exit %d, stderr %q (want near matches)", code, errw)
@@ -322,6 +343,12 @@ func TestIndexWithoutSourcesExplains(t *testing.T) {
 	code, _, errw := cli(t, "index", "--root", root)
 	if code != 1 || !strings.Contains(errw, "add") || !strings.Contains(errw, "no sources") {
 		t.Fatalf("exit %d, stderr %q", code, errw)
+	}
+	if _, err := os.Stat(os.Getenv("SPECS_INDEX_DB")); err == nil {
+		t.Error("index without sources created the database")
+	}
+	if _, err := os.Stat(filepath.Join(root, ".Wammy")); err == nil {
+		t.Error("index without sources created .Wammy")
 	}
 }
 
@@ -424,6 +451,10 @@ func TestEmbeddingEndToEndWithFakeServer(t *testing.T) {
 		t.Errorf("json notice: exit %d err %v %s", code, err, out)
 	}
 	for _, mode := range []string{"vector", "hybrid"} {
+		code, out, errw = cli(t, "search", "--root", root, "--mode", mode, "BRD-004")
+		if code != 1 || out != "" || !strings.Contains(errw, "index --reembed") {
+			t.Errorf("%s BRD-004 mismatch: exit %d stdout %q stderr %q", mode, code, out, errw)
+		}
 		code, _, errw = cli(t, "search", "--root", root, "--mode", mode, "upload")
 		if code != 1 || !strings.Contains(errw, "index --reembed") || !strings.Contains(errw, "--mode fts") {
 			t.Errorf("%s mismatch: exit %d stderr %q", mode, code, errw)
@@ -506,15 +537,111 @@ func TestStatusAndConfigListEnvironmentVariables(t *testing.T) {
 	}
 }
 
-func TestNoNetworkWithProviderNone(t *testing.T) {
-	// guards the test setup itself: with provider none nothing is built.
-	root := indexed(t)
-	out := mustOK(t, "status", "--root", root, "--json")
-	var st struct {
-		Embedder struct{ Cloud bool } `json:"embedder"`
+func TestProviderNoneMakesNoRequests(t *testing.T) {
+	root := newWorkspace(t)
+	srv := embedtest.New(8, "fake")
+	defer srv.Close()
+	// every provider base URL points at the server; provider none must never use it
+	for _, v := range config.EnvVars() {
+		if strings.HasSuffix(v.Name, "BASE_URL") {
+			t.Setenv(v.Name, srv.URL)
+		}
 	}
-	if err := json.Unmarshal([]byte(out), &st); err != nil || st.Embedder.Cloud {
-		t.Errorf("unexpected %v %s", err, out)
+	mustOK(t, "add", "--root", root, filepath.Join(root, "docs"), filepath.Join(root, "features"))
+	for _, args := range [][]string{
+		{"index"}, {"index", "--infer"}, {"search", "upload"}, {"search", "--mode", "fts", "upload"},
+		{"show", "BRD-004"}, {"trace", "BRD-001"}, {"coverage"}, {"status"}, {"doctor"}, {"config"},
+	} {
+		cli(t, append(args, "--root", root)...)
+	}
+	if n := srv.Hits.Load(); n != 0 {
+		t.Errorf("provider none made %d request(s)", n)
+	}
+}
+
+func jsonKeys(t *testing.T, args ...string) map[string]json.RawMessage {
+	t.Helper()
+	var m map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(mustOK(t, args...)), &m); err != nil {
+		t.Fatal(err)
+	}
+	return m
+}
+
+func requireKeys(t *testing.T, what string, m map[string]json.RawMessage, keys ...string) {
+	t.Helper()
+	for _, k := range keys {
+		if _, ok := m[k]; !ok {
+			t.Errorf("%s JSON lacks key %q", what, k)
+		}
+	}
+}
+
+func TestStatusAndConfigJSONKeys(t *testing.T) {
+	root := indexed(t)
+	requireKeys(t, "status", jsonKeys(t, "status", "--root", root, "--json"),
+		"db", "sources", "documents", "failed_documents", "documents_by_type", "entities", "entities_by_type",
+		"edges_explicit", "edges_inferred", "chunks", "embedded_chunks", "indexed_at", "embedder", "environment")
+	requireKeys(t, "config", jsonKeys(t, "config", "--root", root, "--json"),
+		"file", "file_exists", "provider", "model", "base_url", "allow_cloud", "dims", "api_key_env", "api_key_set",
+		"region", "profile", "environment")
+	var emb map[string]json.RawMessage
+	json.Unmarshal(jsonKeys(t, "status", "--root", root, "--json")["embedder"], &emb)
+	requireKeys(t, "status.embedder", emb, "provider", "model", "base_url", "cloud", "cloud_allowed", "api_key_env",
+		"api_key_set", "error", "index_fingerprint", "index_dims")
+	requireKeys(t, "index", jsonKeys(t, "index", "--root", root, "--json"),
+		"scanned", "parsed", "unchanged", "removed", "failed", "entities", "edges", "failures", "embedding")
+	requireKeys(t, "doctor", jsonKeys(t, "doctor", "--root", root, "--json"), "ok", "checks")
+}
+
+func TestAutoSearchWithVectorsAndEmbedderDownDegrades(t *testing.T) {
+	root := newWorkspace(t)
+	srv := embedtest.New(32, "fake")
+	defer srv.Close()
+	home, _ := os.UserHomeDir()
+	writeConfig(t, home, `{"provider":{"embed":"ollama"},"model":"fake","dims":32,"base_url":"`+srv.URL+`"}`)
+	mustOK(t, "add", "--root", root, filepath.Join(root, "docs"))
+	mustOK(t, "index", "--root", root)
+	srv.Down.Store(true)
+	code, out, errw := cli(t, "search", "--root", root, "upload")
+	if code != 0 || !strings.Contains(out, "requirement") || strings.TrimSpace(errw) == "" {
+		t.Errorf("auto, embedder down: exit %d stdout %q stderr %q", code, out, errw)
+	}
+	code, _, errw = cli(t, "search", "--root", root, "--mode", "vector", "upload")
+	if code != 1 || errw == "" {
+		t.Errorf("vector, embedder down: exit %d stderr %q", code, errw)
+	}
+}
+
+func TestStalledEmbedderIsBounded(t *testing.T) {
+	root := newWorkspace(t)
+	srv := embedtest.New(32, "fake")
+	home, _ := os.UserHomeDir()
+	writeConfig(t, home, `{"provider":{"embed":"ollama"},"model":"fake","dims":32,"base_url":"`+srv.URL+`"}`)
+	mustOK(t, "add", "--root", root, filepath.Join(root, "docs"))
+	mustOK(t, "index", "--root", root)
+	srv.Close()
+
+	release := make(chan struct{})
+	stall := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { <-release }))
+	defer stall.Close()
+	defer close(release) // runs first: lets the handlers return so Close can finish
+	writeConfig(t, home, `{"provider":{"embed":"ollama"},"model":"fake","dims":32,"base_url":"`+stall.URL+`"}`)
+	old := api.QueryEmbedTimeout
+	api.QueryEmbedTimeout = 300 * time.Millisecond
+	defer func() { api.QueryEmbedTimeout = old }()
+
+	start := time.Now()
+	code, out, errw := cli(t, "search", "--root", root, "upload")
+	if code != 0 || !strings.Contains(out, "requirement") || !strings.Contains(errw, "unresponsive") {
+		t.Errorf("auto: exit %d stdout %q stderr %q", code, out, errw)
+	}
+	code, _, errw = cli(t, "search", "--root", root, "--mode", "vector", "upload")
+	if code != 1 || !strings.Contains(errw, "unresponsive") {
+		t.Errorf("vector: exit %d stderr %q", code, errw)
+	}
+	if d := time.Since(start); d > 5*time.Second {
+		t.Errorf("searches took %s", d)
 	}
 }
 

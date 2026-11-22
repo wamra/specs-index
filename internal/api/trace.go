@@ -2,10 +2,14 @@ package api
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/wamra/specs-index/internal/graph"
 	"github.com/wamra/specs-index/internal/store"
 )
+
+// edgeKinds are the edge kinds trace accepts (the six spec edges).
+var edgeKinds = map[string]bool{"parent_of": true, "implements": true, "verified_by": true, "depends_on": true, "conflicts_with": true, "references": true}
 
 // TraceOptions are the flags of trace.
 type TraceOptions struct {
@@ -34,6 +38,9 @@ type TraceNode struct {
 // Trace walks the links from key. An unknown key returns
 // *graph.UnknownKeyError (with near matches).
 func Trace(ctx context.Context, st *store.Store, key string, o TraceOptions) (TraceNode, error) {
+	if err := ValidateTraceOptions(o); err != nil {
+		return TraceNode{}, err
+	}
 	n, err := graph.Trace(ctx, st, key, graph.TraceOpts{
 		Direction: o.Direction, Depth: o.Depth, Kinds: o.Kinds, IncludeInferred: o.IncludeInferred,
 	})
@@ -52,4 +59,20 @@ func convertNode(n *graph.Node) TraceNode {
 		t.Children = append(t.Children, convertNode(c))
 	}
 	return t
+}
+
+// ValidateTraceOptions rejects an unknown direction or edge kind with
+// ErrInvalidArgument.
+func ValidateTraceOptions(o TraceOptions) error {
+	switch o.Direction {
+	case "", "down", "up", "both":
+	default:
+		return fmt.Errorf("%w: invalid direction %q (want down, up or both)", ErrInvalidArgument, o.Direction)
+	}
+	for _, k := range o.Kinds {
+		if !edgeKinds[k] {
+			return fmt.Errorf("%w: unknown edge kind %q (valid: parent_of, implements, verified_by, depends_on, conflicts_with, references)", ErrInvalidArgument, k)
+		}
+	}
+	return nil
 }

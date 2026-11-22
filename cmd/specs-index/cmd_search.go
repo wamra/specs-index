@@ -22,6 +22,9 @@ func cmdSearch(args []string, out, errw io.Writer) int {
 	if len(pos) == 0 {
 		return usageErr(errw, "search: give a QUERY (use -- before a query that starts with -)")
 	}
+	if err := api.ValidateSearchOptions(o); err != nil {
+		return usageErr(errw, "search: %v", err)
+	}
 	query := strings.Join(pos, " ")
 	cfg, err := loadConfig()
 	if err != nil {

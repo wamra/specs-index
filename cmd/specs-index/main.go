@@ -136,9 +136,12 @@ func usageErr(errw io.Writer, format string, a ...any) int {
 	return 2
 }
 
-// fail prints an error and returns exit code 1.
+// fail prints an error and returns exit code 1, or 2 for an invalid argument.
 func fail(errw io.Writer, err error) int {
 	fmt.Fprintf(errw, "specs-index: %v\n", err)
+	if errors.Is(err, api.ErrInvalidArgument) {
+		return 2
+	}
 	return 1
 }
 

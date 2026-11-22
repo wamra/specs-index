@@ -30,6 +30,9 @@ func cmdTrace(args []string, out, errw io.Writer) int {
 			o.Kinds = append(o.Kinds, k)
 		}
 	}
+	if err := api.ValidateTraceOptions(o); err != nil {
+		return usageErr(errw, "trace: %v", err)
+	}
 	st, _, err := c.openExisting()
 	if err != nil {
 		return fail(errw, err)

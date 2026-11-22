@@ -58,6 +58,9 @@ type IndexResult struct {
 // text-only and is reported in Embedding, not as an error. A fingerprint
 // mismatch is an error (it names `index --reembed`).
 func Index(ctx context.Context, st *store.Store, root string, cfg config.Config, o IndexOptions) (IndexResult, error) {
+	if o.NoEmbed && (o.Reembed || o.Infer) {
+		return IndexResult{}, fmt.Errorf("%w: --no-embed cannot be combined with --reembed or --infer", ErrInvalidArgument)
+	}
 	srcs, err := indexer.ListSources(st)
 	if err != nil {
 		return IndexResult{}, err
