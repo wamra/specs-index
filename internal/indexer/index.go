@@ -116,6 +116,12 @@ func run(ctx context.Context, st *store.Store, root string, pruneOnly bool, type
 				WHERE lower(path) NOT LIKE '%.feature'`); err != nil {
 				return Report{}, err
 			}
+			// Recorded now, not at the end: the cleared file state is what
+			// makes an interrupted run's documents parse again, and a later
+			// revert to the old mapping must still see a change.
+			if err := st.SetMeta(metaTypes, typesJSON); err != nil {
+				return Report{}, err
+			}
 		}
 	}
 	for _, f := range files {
@@ -191,9 +197,6 @@ func run(ctx context.Context, st *store.Store, root string, pruneOnly bool, type
 		return rep, err
 	}
 	if !pruneOnly {
-		if err := st.SetMeta(metaTypes, typesJSON); err != nil {
-			return rep, err
-		}
 		if err := st.SetMeta("indexed_at", time.Now().UTC().Format(time.RFC3339)); err != nil {
 			return rep, err
 		}

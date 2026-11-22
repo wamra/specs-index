@@ -217,11 +217,25 @@ func listed(names []string, model string) bool {
 	return false
 }
 
-// redactURL hides any password in raw, for messages.
-func redactURL(raw string) string {
-	u, err := url.Parse(raw)
+// RedactURL returns raw with any password in its user info replaced by
+// "xxxxx" (url.URL.Redacted), "(unparseable URL)" when it cannot be parsed and
+// "" for "". A value without a scheme ("user:pw@host:port") is read as http,
+// as the cloud gate reads it, and returned without the added scheme.
+func RedactURL(raw string) string {
+	if raw == "" {
+		return ""
+	}
+	in, added := raw, false
+	if !strings.Contains(in, "://") {
+		in, added = "http://"+in, true
+	}
+	u, err := url.Parse(in)
 	if err != nil {
 		return "(unparseable URL)"
 	}
-	return u.Redacted()
+	out := u.Redacted()
+	if added {
+		out = strings.TrimPrefix(out, "http://")
+	}
+	return out
 }

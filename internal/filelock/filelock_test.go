@@ -33,7 +33,7 @@ func TestSecondHandleIsRefusedUntilRelease(t *testing.T) {
 func TestHelperHoldLock(t *testing.T) {
 	p := os.Getenv("FILELOCK_TEST_HOLD")
 	if p == "" {
-		t.Skip("helper process only")
+		return // helper process only
 	}
 	l, err := Try(p)
 	if err != nil {

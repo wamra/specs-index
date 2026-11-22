@@ -286,6 +286,7 @@ func TestMentionWithUnknownPrefixIsNotDangling(t *testing.T) {
 		{"FDS-999", "references", "mention"}, // FDS is used by entities
 		{"ZZ-5", "references", "mention"},    // ZZ is mapped in the config below
 		{"QQ-1", "implements", "field"},      // a link field always counts
+		{"XYZ-9", "references", "field"},     // an FDS: field under a requirement counts too
 	} {
 		if _, err := st.DB().Exec(`INSERT INTO edges(src_key, dst_key, kind, line, explicit, origin) VALUES ('BRD-001', ?, ?, 1, 1, ?)`, e[0], e[1], e[2]); err != nil {
 			t.Fatal(err)
@@ -299,7 +300,7 @@ func TestMentionWithUnknownPrefixIsNotDangling(t *testing.T) {
 	for _, d := range r.Dangling {
 		got[d.ID] = true
 	}
-	for id, want := range map[string]bool{"UTF-8": false, "FDS-999": true, "ZZ-5": true, "QQ-1": true, "BRD-099": true} {
+	for id, want := range map[string]bool{"UTF-8": false, "FDS-999": true, "ZZ-5": true, "QQ-1": true, "XYZ-9": true, "BRD-099": true} {
 		if got[id] != want {
 			t.Errorf("dangling %s = %v, want %v (all: %+v)", id, got[id], want, r.Dangling)
 		}

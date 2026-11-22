@@ -122,7 +122,7 @@ func ollamaHealth(ctx context.Context, hc *http.Client, base, model string) erro
 		names = append(names, m.Name, m.Model)
 	}
 	if !listed(names, model) {
-		return fmt.Errorf("model %s not listed at %s", model, redactURL(base))
+		return fmt.Errorf("model %s not listed at %s", model, RedactURL(base))
 	}
 	return nil
 }

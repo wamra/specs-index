@@ -813,3 +813,26 @@ func runTypes(t *testing.T, st *store.Store, root string, types map[string]strin
 	}
 	return rep
 }
+
+func TestInterruptedMappingChangeThenRevert(t *testing.T) {
+	root := evalDir(t, t.TempDir())
+	write(t, filepath.Join(root, "a.md"), "## ZZ-001 A\n")
+	write(t, filepath.Join(root, "b.md"), "## ZZ-002 B\n")
+	st := openStore(t, root)
+	AddSource(st, root, ".")
+	runTypes(t, st, root, map[string]string{"ZZ": "design"})
+	// a run with another mapping stops after the first document
+	ctx, cancel := context.WithCancel(context.Background())
+	afterDoc = cancel
+	_, err := Run(ctx, st, root, map[string]string{"ZZ": "acceptance"})
+	afterDoc = nil
+	cancel()
+	if err == nil {
+		t.Fatal("expected the interrupted run to fail")
+	}
+	// back to the first mapping: every document must end up with it
+	runTypes(t, st, root, map[string]string{"ZZ": "design"})
+	if n := count(t, st, `SELECT count(*) FROM entities WHERE type <> 'design'`); n != 0 {
+		t.Errorf("%d entities kept the type of the interrupted mapping", n)
+	}
+}

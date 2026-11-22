@@ -29,8 +29,8 @@ type Item struct {
 // key; Referrer is the entity at the other end of the edge; Side is "target"
 // when the undefined ID is the edge's destination and "source" when it is the
 // edge's source. Path and Line say where the edge is written. Mention is true
-// for references/origin=mention edges, which are listed apart from field,
-// table and tag edges (non-mentions sort first). A mention is dangling only
+// for origin=mention edges (an ID in prose or a table cell), which are listed
+// apart from field, table and tag edges (non-mentions sort first). A mention is dangling only
 // when its prefix is known (used by a defined entity or in the prefix
 // mapping), so prose such as UTF-8 or SHA-256 is not reported.
 type Dangling struct {
@@ -164,7 +164,7 @@ func Run(ctx context.Context, st *store.Store, o Options) (Report, error) {
 			rows.Close()
 			return r, err
 		}
-		mention := kind == "references" || origin.String == "mention"
+		mention := origin.String == "mention" // ID-shaped text in prose or a table cell
 		if mention && !known[prefixOf(dst)] {
 			dstOK = true // ID-shaped prose such as UTF-8 or SHA-256, not a reference
 		}

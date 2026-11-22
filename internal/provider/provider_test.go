@@ -317,3 +317,26 @@ func TestOpenAIHealthRestrictedKeyFallsBackToProbe(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestRedactURL(t *testing.T) {
+	for in, want := range map[string]string{
+		"":                               "",
+		"http://user:pw@127.0.0.1:1":     "http://user:xxxxx@127.0.0.1:1",
+		"user:pw@127.0.0.1:1":            "user:xxxxx@127.0.0.1:1",
+		"http://localhost:11434":         "http://localhost:11434",
+		"https://u:p@host.example/v1?q=": "https://u:xxxxx@host.example/v1?q=",
+	} {
+		if got := RedactURL(in); got != want {
+			t.Errorf("RedactURL(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
+func TestSchemelessBaseURLIsHTTP(t *testing.T) {
+	if r := (EmbedConfig{BaseURL: "user:pw@127.0.0.1:1/"}).Resolved(); r.BaseURL != "http://user:pw@127.0.0.1:1" {
+		t.Fatalf("BaseURL = %q", r.BaseURL)
+	}
+	if r := (EmbedConfig{BaseURL: "https://h.example"}).Resolved(); r.BaseURL != "https://h.example" {
+		t.Fatalf("BaseURL = %q", r.BaseURL)
+	}
+}

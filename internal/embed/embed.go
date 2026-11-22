@@ -125,12 +125,7 @@ func New(cfg config.Config, allowCloud bool) (Embedder, error) {
 	if cloud && !allowCloud && !cfg.AllowCloud {
 		where := "AWS"
 		if res.BaseURL != "" {
-			// never echo credentials embedded in the URL
-			if u, err := url.Parse(res.BaseURL); err == nil {
-				where = u.Redacted()
-			} else {
-				where = "(unparseable URL)"
-			}
+			where = provider.RedactURL(res.BaseURL) // never echo credentials embedded in the URL
 		}
 		return nil, fmt.Errorf("%w: provider %q at %s would send document text off this machine; set \"allow_cloud\": true in the config (or SPECS_INDEX_ALLOW_CLOUD=true), or pass --allow-cloud to index or doctor",
 			ErrCloudNotAllowed, res.Provider, where)

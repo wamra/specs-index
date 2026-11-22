@@ -4,13 +4,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/wamra/specs-index/internal/config"
 	"github.com/wamra/specs-index/internal/markdown"
+	"github.com/wamra/specs-index/internal/provider"
 )
 
 // ConfigResult is the effective configuration. Types is the Markdown ID
@@ -66,19 +66,9 @@ func EnvInfo(root string) []EnvVarInfo {
 	return out
 }
 
-// RedactURL returns raw with any password in its user info replaced by "xxxxx"
-// (url.URL.Redacted), "(unparseable URL)" when it cannot be parsed, and "" for
-// "".
-func RedactURL(raw string) string {
-	if raw == "" {
-		return ""
-	}
-	u, err := url.Parse(raw)
-	if err != nil {
-		return "(unparseable URL)"
-	}
-	return u.Redacted()
-}
+// RedactURL hides any password in a URL shown to the user; see
+// provider.RedactURL.
+func RedactURL(raw string) string { return provider.RedactURL(raw) }
 
 func tildePath(p string) string {
 	if home, err := os.UserHomeDir(); err == nil && home != "" {

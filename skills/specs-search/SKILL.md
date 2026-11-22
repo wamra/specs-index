@@ -62,7 +62,7 @@ specs-index search BRD-004
 specs-index trace KEY [--direction down|up|both] [--depth 5] [--kinds parent_of,implements,verified_by] [--include-inferred] [--json]
 ```
 
-Edge kinds: `parent_of`, `implements`, `verified_by`, `depends_on`, `conflicts_with`, `references`. The default follows `parent_of`, `implements` and `verified_by`. `references` (an ID merely mentioned in text) is followed only when listed in `--kinds`. Each line shows how it was reached and the source lines.
+Edge kinds: `parent_of`, `implements`, `verified_by`, `depends_on`, `conflicts_with`, `references`. The default follows `parent_of`, `implements` and `verified_by`. `references` (an ID merely mentioned in text) is followed only when listed in `--kinds`. Each line shows how it was reached and a `file:line`: for the starting entity its definition, for every other line where the link to it is written (in JSON, `path`/`line` is the definition and `link_path`/`link_line` the link).
 
 ## Coverage
 
