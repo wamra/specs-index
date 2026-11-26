@@ -1,6 +1,7 @@
 package workspace
 
 import (
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -161,5 +162,66 @@ func TestEnsureExcludedWorktree(t *testing.T) {
 	b, err := os.ReadFile(filepath.Join(gd, "info", "exclude"))
 	if err != nil || !strings.Contains(string(b), ".Wammy/") {
 		t.Fatalf("worktree exclude missing entry: %v\n%s", err, b)
+	}
+}
+
+func TestCheckStateRefusesSymlinkedStateDir(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlinks need privileges on windows")
+	}
+	t.Setenv("SPECS_INDEX_DB", "")
+	root := evalDir(t, t.TempDir())
+	outside := evalDir(t, t.TempDir())
+	if err := CheckState(root); err != nil {
+		t.Fatalf("clean root: %v", err)
+	}
+	if err := os.Symlink(outside, filepath.Join(root, StateDir)); err != nil {
+		t.Fatal(err)
+	}
+	if err := CheckState(root); !errors.Is(err, ErrStateSymlink) {
+		t.Fatalf("symlinked .Wammy: err = %v, want ErrStateSymlink", err)
+	}
+}
+
+func TestCheckStateRefusesSymlinkedDBFiles(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlinks need privileges on windows")
+	}
+	t.Setenv("SPECS_INDEX_DB", "")
+	for _, suffix := range []string{"", "-wal", "-shm", ".lock"} {
+		root := evalDir(t, t.TempDir())
+		outside := filepath.Join(evalDir(t, t.TempDir()), "target")
+		if err := os.MkdirAll(filepath.Join(root, StateDir), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Symlink(outside, DBPath(root)+suffix); err != nil {
+			t.Fatal(err)
+		}
+		if err := CheckState(root); !errors.Is(err, ErrStateSymlink) {
+			t.Fatalf("symlinked db%s: err = %v, want ErrStateSymlink", suffix, err)
+		}
+	}
+}
+
+func TestCheckStateEnvOverrideChecksFilesOnly(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlinks need privileges on windows")
+	}
+	root := evalDir(t, t.TempDir())
+	real := evalDir(t, t.TempDir())
+	// The user chose this location: a linked directory is theirs to use.
+	linkDir := filepath.Join(evalDir(t, t.TempDir()), "dir")
+	if err := os.Symlink(real, linkDir); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("SPECS_INDEX_DB", filepath.Join(linkDir, "x.sqlite"))
+	if err := CheckState(root); err != nil {
+		t.Fatalf("linked directory with SPECS_INDEX_DB: %v", err)
+	}
+	if err := os.Symlink(filepath.Join(real, "elsewhere"), filepath.Join(real, "x.sqlite")); err != nil {
+		t.Fatal(err)
+	}
+	if err := CheckState(root); !errors.Is(err, ErrStateSymlink) {
+		t.Fatalf("linked db file: err = %v, want ErrStateSymlink", err)
 	}
 }

@@ -56,12 +56,18 @@ func ResolveRoot(dir string) (string, error) {
 
 // OpenForWrite opens (creating if needed) the index of root.
 func OpenForWrite(root string) (*store.Store, error) {
+	if err := workspace.CheckState(root); err != nil {
+		return nil, err
+	}
 	return store.Open(workspace.DBPath(root))
 }
 
 // OpenExisting opens the existing index of root for reading. It returns an
 // error wrapping ErrNoIndex when there is none.
 func OpenExisting(root string) (*store.Store, error) {
+	if err := workspace.CheckState(root); err != nil {
+		return nil, err
+	}
 	p := workspace.DBPath(root)
 	if _, err := os.Stat(p); err != nil {
 		return nil, fmt.Errorf("%w for this project (looked for %s); run `specs-index add PATH` then `specs-index index`", ErrNoIndex, DisplayPath(root, p))

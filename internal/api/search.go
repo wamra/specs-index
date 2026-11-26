@@ -17,6 +17,7 @@ import (
 	"github.com/wamra/specs-index/internal/provider"
 	"github.com/wamra/specs-index/internal/search"
 	"github.com/wamra/specs-index/internal/store"
+	"github.com/wamra/specs-index/internal/workspace"
 )
 
 // SearchOptions are the flags of search.
@@ -313,6 +314,11 @@ func Show(ctx context.Context, st *store.Store, root, key string) (ShowResult, e
 // readLines returns lines start..end (1-based, inclusive) of the file under
 // root, or "" when it cannot be read. The file is only read.
 func readLines(root, rel string, start, end int) string {
+	// The path comes from the index, which a document repository can ship
+	// pre-filled: never read outside the root.
+	if _, err := workspace.Rel(root, rel); err != nil {
+		return ""
+	}
 	f, err := os.Open(filepath.Join(root, filepath.FromSlash(rel)))
 	if err != nil {
 		return ""

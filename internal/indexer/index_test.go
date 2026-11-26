@@ -836,3 +836,30 @@ func TestInterruptedMappingChangeThenRevert(t *testing.T) {
 		t.Errorf("%d entities kept the type of the interrupted mapping", n)
 	}
 }
+
+// An index shipped with a repository can hold a document row whose path leaves
+// the root. The run must drop that row without reading the file it names.
+func TestIndexedRowOutsideRootIsDroppedNotRead(t *testing.T) {
+	root := evalDir(t, t.TempDir())
+	outside := evalDir(t, t.TempDir())
+	write(t, filepath.Join(outside, "secret.md"), "## BRD-900 Secret\n")
+	write(t, filepath.Join(root, "in.md"), "## BRD-001 In\n")
+	st := openStore(t, root)
+	if err := AddSource(st, root, "in.md"); err != nil {
+		t.Fatal(err)
+	}
+	rel, err := filepath.Rel(root, filepath.Join(outside, "secret.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.DB().Exec(`INSERT INTO documents (path, type, status) VALUES (?, 'markdown', 'ok')`, filepath.ToSlash(rel)); err != nil {
+		t.Fatal(err)
+	}
+	runIdx(t, st, root)
+	if n := count(t, st, `SELECT count(*) FROM documents WHERE path = ?`, filepath.ToSlash(rel)); n != 0 {
+		t.Fatalf("row outside the root was kept")
+	}
+	if n := count(t, st, `SELECT count(*) FROM entities WHERE key='BRD-900'`); n != 0 {
+		t.Fatalf("file outside the root was read")
+	}
+}

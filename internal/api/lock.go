@@ -24,6 +24,9 @@ const lockPoll = 100 * time.Millisecond
 // the lock is free, ctx ends or IndexLockWait passes, then fails. Read commands
 // never take it. The caller must call the returned release function.
 func LockIndex(ctx context.Context, root string, note io.Writer) (release func(), err error) {
+	if err := workspace.CheckState(root); err != nil {
+		return nil, err
+	}
 	p := workspace.DBPath(root) + ".lock"
 	deadline := time.Now().Add(IndexLockWait)
 	noted := false

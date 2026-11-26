@@ -117,3 +117,35 @@ func EnsureExcluded(root string) error {
 	}
 	return f.Close()
 }
+
+// ErrStateSymlink is returned by CheckState when the index directory or one of
+// the index files is a symbolic link.
+var ErrStateSymlink = errors.New("index location is a symbolic link")
+
+// CheckState refuses an index location that a document repository could have
+// redirected with a symbolic link: the .Wammy directory under root (when the
+// default location is in use) and the database file with its -wal, -shm and
+// .lock companions. Following such a link would create or write files outside
+// the project. A SPECS_INDEX_DB override names a location the user chose, so
+// only its files are checked, not its directories.
+func CheckState(root string) error {
+	db := DBPath(root)
+	if os.Getenv("SPECS_INDEX_DB") == "" {
+		if err := refuseLink(filepath.Join(root, StateDir)); err != nil {
+			return err
+		}
+	}
+	for _, suffix := range []string{"", "-wal", "-shm", ".lock"} {
+		if err := refuseLink(db + suffix); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func refuseLink(p string) error {
+	if fi, err := os.Lstat(p); err == nil && fi.Mode()&os.ModeSymlink != 0 {
+		return fmt.Errorf("%w: %s", ErrStateSymlink, filepath.Base(p))
+	}
+	return nil
+}

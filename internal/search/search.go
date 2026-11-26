@@ -17,6 +17,7 @@ import (
 	"github.com/wamra/specs-index/internal/provider"
 	"github.com/wamra/specs-index/internal/store"
 	"github.com/wamra/specs-index/internal/vector"
+	"github.com/wamra/specs-index/internal/workspace"
 )
 
 // Options controls a search. Mode is auto, exact, fts, vector or hybrid.
@@ -355,6 +356,11 @@ func (s *searcher) filterOnly(limit int) ([]found, error) {
 // indexed: size and mtime are compared first, then the sha256. A missing or
 // unreadable file counts as stale. Files are only read, never written.
 func isStale(root, rel string, d docState) bool {
+	// rel comes from the index, which a document repository can ship
+	// pre-filled: never open a path outside the root.
+	if _, err := workspace.Rel(root, rel); err != nil {
+		return true
+	}
 	abs := filepath.Join(root, filepath.FromSlash(rel))
 	fi, err := os.Stat(abs)
 	if err != nil {
