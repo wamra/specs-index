@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -230,7 +231,12 @@ func TestCloseCheckpoints(t *testing.T) {
 }
 
 func TestPathWithSpecialChars(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "a b#c%d?e", "specs.sqlite")
+	// A question mark cannot be part of a Windows path; the other URI-special characters still run there.
+	dir := "a b#c%d?e"
+	if runtime.GOOS == "windows" {
+		dir = "a b#c%d e"
+	}
+	path := filepath.Join(t.TempDir(), dir, "specs.sqlite")
 	s, err := Open(path)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
