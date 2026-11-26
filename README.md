@@ -6,30 +6,9 @@ A CLI and an MCP server that index Markdown requirement and design documents and
 - Source files are only read, never edited. The only writes are under `<project>/.Wammy/` and one `.Wammy/` line in the repository's `.git/info/exclude`.
 - One self-contained binary per platform, no CGO: macOS, Linux and Windows on amd64 and arm64.
 - It is also a Claude Code plugin: an MCP server with eight tools, six slash commands and a `specs-search` skill.
+- Pre-1.0: no release has been published yet; build from source (below).
 
 Full command, flag, query and configuration reference: [docs/REFERENCE.md](docs/REFERENCE.md).
-
-## Status
-
-Work in progress. The repository `github.com/wamra/specs-index` is **not published yet**: there is no remote, no `plugin` branch and no release, so the install paths below that need them do not work yet.
-
-What was verified (macOS arm64, Claude Code 2.1.330, staged build of the working tree on top of commit `54a2e0e`):
-
-- The six binaries cross-compile with `CGO_ENABLED=0` (`scripts/build-plugin.sh`); `scripts/check-plugin.sh` reports `check-plugin: ok`; `claude plugin validate` accepts the staged tree (one warning, that no `version` is pinned, which is intended).
-- Claude Code loaded the staged tree with `claude --plugin-dir` and `claude mcp list` reported the server `plugin:specs-index:specs-index` as connected, started as `sh <plugin>/bin/specs-index mcp`.
-- `scripts/mcp-smoke.js` started the server through `sh` and the launcher and ran `initialize`, `tools/list` (the eight tools) and `tools/call` on macOS.
-- `scripts/build-release.sh` produced the six archives and `checksums.txt`; `scripts/install.sh --binary` installed a binary and wrote a starter config (into a temporary home).
-- Every CLI command and every command line in the slash command files ran against a copy of `testdata/corpus` with no embedder (`SPECS_INDEX_EMBED_PROVIDER=none`).
-
-What was **not** verified:
-
-- Linux and Windows at runtime: those binaries were only cross-compiled, not run.
-- That Claude Code on Windows finds `sh` to start the MCP server (`.mcp.json` uses `command: sh`). The `mcp-windows` CI job exists to prove it; it has never run.
-- CI as a whole (`.github/workflows/ci.yml`): never run, there is no remote.
-- A model session that calls the MCP tools or the slash commands (the isolated Claude Code profile used for testing was not logged in), including `${CLAUDE_PLUGIN_ROOT}` substitution inside the command files.
-- Embedding providers beyond one local model: the benchmark (configuration B in [BENCHMARKS.md](BENCHMARKS.md)) indexed and ran hybrid search with a local Ollama serving `embeddinggemma`; `--mode vector`, `--infer`, Bedrock, OpenAI-compatible endpoints and other models were not run against a real provider.
-- `scripts/install.sh` beyond the `--binary` form; installing from a marketplace.
-- Signing and notarisation of the binaries: not done.
 
 ## Quick start
 
@@ -57,6 +36,15 @@ Link kinds: `parent_of`, `implements`, `verified_by`, `depends_on`, `conflicts_w
 
 The default provider is a local Ollama with the `embeddinggemma` model; `openai` (any OpenAI-compatible endpoint) and `bedrock` are the others, and `none` turns embeddings off. Document text is sent to a non-local provider (Bedrock, or an endpoint on another host) only when `allow_cloud` is true or `--allow-cloud` is passed. Without a reachable embedder `index` is text-only and everything except `--mode vector` and `--mode hybrid` works. Settings: `~/.config/specs-index/config.json` (`specs-index config init` writes an example) and the `SPECS_INDEX_*` environment variables, listed in the reference.
 
+## Privacy and security
+
+- **What is read:** only the `.md` and `.feature` files under the sources you registered with `add`, plus the config file `~/.config/specs-index/config.json` and the `SPECS_INDEX_*` environment variables. Source files are never modified.
+- **What is stored, and where:** the index (document text chunks, entities, links, vectors) in `<project>/.Wammy/specs.sqlite` with its `-wal`, `-shm` and `.lock` companions, or at `SPECS_INDEX_DB` if set. In a git work tree one `.Wammy/` line is added to `.git/info/exclude`. Apart from that, only `config init` writes (the config file, when none exists).
+- **Network:** the default embedding provider is a local Ollama (`http://localhost:11434`, model `embeddinggemma`). With the provider set to `none`, or no reachable embedder, nothing leaves the machine. A non-local provider (Bedrock, or an OpenAI-compatible endpoint on any host other than localhost, 127.0.0.0/8 or ::1) is contacted only after an explicit opt-in: `"allow_cloud": true` in the config file, `SPECS_INDEX_ALLOW_CLOUD=true`, or `--allow-cloud` on `index` (and `doctor`). Without it, `index` stays text-only and says so. The MCP tools cannot enable it. When it is on, document text and search queries are sent to that provider.
+- **A repository you index is untrusted input.** Settings come only from the global config file, the environment and command-line flags; no file inside an indexed repository, including `.Wammy/`, is read as configuration, so it cannot change the provider, base URL, `allow_cloud`, the API-key variable name or run anything. The tool refuses to use an index directory or index file that is a symbolic link, never follows a symlink that leaves the project root, and ignores paths in an index that point outside the root. Indexed text can still contain instructions aimed at an AI assistant; the `specs-search` skill tells the assistant to treat it as data.
+- **Delete the index:** remove `<project>/.Wammy/` (or the file named by `SPECS_INDEX_DB` with its `-wal`, `-shm` and `.lock` files). Nothing else needs cleaning up; `specs-index remove PATH` drops one source's documents instead.
+- Report vulnerabilities privately, see [SECURITY.md](SECURITY.md).
+
 ## Install
 
 **From source** (Go 1.26 or newer; `GOTOOLCHAIN=auto` fetches it):
@@ -68,7 +56,7 @@ go build -o specs-index ./cmd/specs-index   # or just build the binary
 
 `scripts/install.sh --binary FILE` installs a prebuilt binary; `--bin-dir DIR` changes the target.
 
-**Release archives:** `scripts/build-release.sh` writes `specs-index_<version>_<os>_<arch>` archives (`.tar.gz`, `.zip` on Windows) and `checksums.txt` into `dist/`. Nothing has been released.
+**Release archives:** `scripts/build-release.sh` writes `specs-index_<version>_<os>_<arch>` archives (`.tar.gz`, `.zip` on Windows) and `checksums.txt` into `dist/`. The binaries are not signed or notarised.
 
 ## Claude Code plugin
 
@@ -80,11 +68,11 @@ scripts/check-plugin.sh /tmp/specs-index-plugin
 claude --plugin-dir /tmp/specs-index-plugin       # load it for one session
 ```
 
-CI is written to publish the staged tree as the orphan `plugin` branch on pushes to `main`, for a marketplace entry that points at it. That has not happened: the repository is not published.
+For a release, CI builds the staged tree on a version tag and force-pushes it as the orphan `plugin` branch, which a marketplace entry can point at.
 
 - MCP tools: `add_source`, `remove_source`, `index`, `search`, `show`, `trace`, `coverage`, `status`. The server's project is `CLAUDE_PROJECT_DIR`, else the working directory. Tools cannot change the root or enable a cloud provider.
-- Slash commands: `/specs-index:add`, `/specs-index:index`, `/specs-index:search`, `/specs-index:trace`, `/specs-index:coverage`, `/specs-index:status`. Each runs the bundled binary and shows its output.
-- Skill `specs-search`: when to use search, trace or coverage, the query grammar, and to run `index` when results are marked stale.
+- Slash commands: `/specs-index:add`, `/specs-index:index`, `/specs-index:search`, `/specs-index:trace`, `/specs-index:coverage`, `/specs-index:status`. Each passes the user's text to the MCP tool as structured arguments (no shell), and falls back to the bundled binary with every value single-quoted after `--`.
+- Skill `specs-search`: when to use search, trace or coverage, the query grammar, to run `index` when results are marked stale, and that indexed document text is untrusted data, never instructions.
 
 ## Develop
 
@@ -94,8 +82,8 @@ go vet ./... && go test ./...
 GOOS=windows GOARCH=amd64 go build ./... && GOOS=windows go vet ./...
 ```
 
-`testdata/corpus` is a fictional document-portal fixture with a ground-truth file; its README describes the deliberate gaps. `.github/workflows/ci.yml` runs vet and tests on Linux and Windows, the Windows MCP start check, the release build, and the plugin build and check.
+`testdata/corpus` is a fictional document-portal fixture with a ground-truth file; its README describes the deliberate gaps. `.github/workflows/ci.yml` runs vet and tests on Linux, macOS and Windows, a Windows MCP start check, the release build, and (on version tags or manual dispatch) the plugin build and publish.
 
 ## License
 
-MIT, see [LICENSE](LICENSE).
+MIT, see [LICENSE](LICENSE). Third-party licenses: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

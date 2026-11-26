@@ -1,5 +1,5 @@
 // Command bench measures retrieval quality and speed of the three benchmark
-// configurations (spec section 7) plus a no-embedding baseline, and writes one
+// configurations plus a no-embedding baseline, and writes one
 // results JSON per run. Nothing here touches a real index: every run builds
 // its own index in a temporary directory.
 //

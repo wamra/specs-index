@@ -1,6 +1,6 @@
 # bench
 
-Benchmark runner for specs-index (spec section 7). See `BENCHMARKS.md` for the measured results and the exact commands.
+Benchmark runner for specs-index. See `BENCHMARKS.md` for the measured results and the exact commands.
 
 - `runner.go`, `metrics.go`, `orama.go`, `rss_*.go`: the runner (`go run ./bench --config A|B|C|baseline --out FILE`). Run it from the repository root.
 - `queries.json`: labelled queries (`exact_id`, `keyword`, `semantic`, `filtered`); includes every query of `testdata/corpus/truth.json`. `go test ./bench/...` checks that every expected key exists in the corpus.

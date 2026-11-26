@@ -1,7 +1,5 @@
 # specs-index reference
 
-Everything here was checked against the binary built from this repository (`specs-index --help`-style usage output and real runs against a copy of `testdata/corpus`).
-
 ## Contents
 
 - [Commands](#commands)
@@ -93,7 +91,7 @@ Each hit shows key, type, title, file and lines, status, and `(stale: ...)` when
 ## Index location and project root
 
 - Root: `--root DIR`; else the nearest ancestor of the working directory that contains `.git`; else the working directory. (The MCP server uses `CLAUDE_PROJECT_DIR`, else the working directory, resolved the same way.)
-- Index: `<root>/.Wammy/specs.sqlite`; `SPECS_INDEX_DB` overrides the path.
+- Index: `<root>/.Wammy/specs.sqlite`; `SPECS_INDEX_DB` overrides the path. The tool refuses to open an index when `.Wammy/` (with the default location) or the database file, its `-wal`, `-shm` or `.lock` file is a symbolic link.
 - Paths stored and printed are root-relative with forward slashes. `add` rejects a path outside the root.
 - `.Wammy/` is never indexed. In a git work tree `add` appends `.Wammy/` to `<gitdir>/info/exclude` (never `.gitignore`).
 - Files with the extensions `.md` and `.feature` are indexed; others are ignored.
@@ -159,7 +157,7 @@ Plugin start line (`.mcp.json`): `sh "${CLAUDE_PLUGIN_ROOT}/bin/specs-index" mcp
 
 ## Slash commands and skill
 
-Plugin name `specs-index`; each command runs `sh "${CLAUDE_PLUGIN_ROOT}/bin/specs-index" <command> $ARGUMENTS` and shows the output.
+Plugin name `specs-index`. Each command passes the user's text to the matching MCP tool as structured arguments, so no shell is involved; if the MCP server is unavailable it runs `sh "${CLAUDE_PLUGIN_ROOT}/bin/specs-index" <command>` with every user-supplied value single-quoted, flags first and the value after `--`. `/specs-index:index` never passes `--allow-cloud`.
 
 | Command | Runs |
 | --- | --- |
@@ -178,9 +176,10 @@ Commands run in Claude Code's working directory, so the project root is found as
 | --- | --- |
 | `scripts/plugin-launcher.sh` | Becomes `bin/specs-index` in the plugin: runs the bundled binary for this OS and CPU, else `specs-index` from `PATH`, else exits 127. |
 | `scripts/build-plugin.sh OUT [VERSION]` | Cross-builds the six binaries (darwin, linux, windows on amd64 and arm64, `CGO_ENABLED=0`) and stages the plugin tree into OUT, which it deletes first; it refuses an OUT that is `/`, `$HOME`, the repository or an ancestor of it (exit 2). |
-| `scripts/check-plugin.sh OUT [VERSION_TEXT]` | Checks a staged tree: six binaries over 5 MB, launcher, executable bits, six command files, the skill, `plugin.json` without `version`, `.mcp.json` pointing at the launcher, tree under 120 MB, launcher exits 127 with no binary, `version` runs. Prints `check-plugin: ok (...)`. |
+| `scripts/check-plugin.sh OUT [VERSION_TEXT]` | Checks a staged tree: six binaries over 5 MB, launcher, executable bits, six command files, the skill, `LICENSE` and `THIRD_PARTY_NOTICES.md`, `plugin.json` without `version`, `.mcp.json` pointing at the launcher, tree under 120 MB, launcher exits 127 with no binary, `version` runs. Prints `check-plugin: ok (...)`. |
 | `scripts/build-release.sh [VERSION]` | Release archives and `checksums.txt` into `dist/`. |
 | `scripts/install.sh [--binary FILE] [--bin-dir DIR]` | Install the binary (macOS, Linux) and write a starter config if none exists. |
+| `scripts/gen-notices.sh` | Regenerates `THIRD_PARTY_NOTICES.md` from the Go module cache (offline once modules are downloaded). |
 | `scripts/mcp-smoke.js PLUGIN_DIR PROJECT_DIR` | Start the server through `sh` and the launcher; run `initialize`, `tools/list`, `tools/call status` (needs Node). |
 
 ## Exit codes
