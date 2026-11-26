@@ -2,7 +2,7 @@
  "config": "A",
  "label": "A: SQLite + FTS5 + vec1, Amazon Titan Text V2 (Bedrock)",
  "status": "not_run",
- "reason": "not run: needs the owner's approval for a cloud call (--allow-cloud); this implementation never calls Bedrock without it",
+ "reason": "not run: makes cloud calls and needs --allow-cloud; this implementation never calls Bedrock without it",
  "date": "2026-11-22",
  "machine": {
   "description": "Apple Silicon desktop, 128 GB RAM",

@@ -6,7 +6,7 @@
 //	go run ./bench --config baseline --out bench/results/baseline-fts.json
 //	go run ./bench --config B        --out bench/results/B.json
 //	go run ./bench --config C        --out bench/results/C.json
-//	go run ./bench --config A --allow-cloud --out bench/results/A.json   (owner only)
+//	go run ./bench --config A --allow-cloud --out bench/results/A.json   (makes paid cloud calls)
 package main
 
 import (
@@ -335,7 +335,7 @@ func runViaChild(o options, args []string) (Result, error) {
 	switch o.config {
 	case "A":
 		if !o.allowCloud {
-			return notRun(o, "not run: needs the owner's approval for a cloud call (--allow-cloud); this implementation never calls Bedrock without it"), nil
+			return notRun(o, "not run: makes cloud calls and needs --allow-cloud; this implementation never calls Bedrock without it"), nil
 		}
 	case "B":
 		model := orDefault(o.model, gemmaModel)
