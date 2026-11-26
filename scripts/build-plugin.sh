@@ -26,5 +26,5 @@ cp "$ROOT/.claude-plugin/plugin.json" "$OUT/.claude-plugin/"
 cp "$ROOT/.mcp.json" "$OUT/"
 cp "$ROOT"/commands/*.md "$OUT/commands/"
 cp "$ROOT/skills/specs-search/SKILL.md" "$OUT/skills/specs-search/"
-cp "$ROOT/LICENSE" "$ROOT/README.md" "$OUT/"
+cp "$ROOT/LICENSE" "$ROOT/THIRD_PARTY_NOTICES.md" "$ROOT/README.md" "$OUT/"
 chmod +x "$OUT"/bin/*

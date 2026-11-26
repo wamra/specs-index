@@ -14,6 +14,12 @@ for c in add index search trace coverage status; do
   [ -f "$OUT/commands/$c.md" ] || fail "missing commands/$c.md"
 done
 [ -f "$OUT/skills/specs-search/SKILL.md" ] || fail "missing skills/specs-search/SKILL.md"
+for f in LICENSE THIRD_PARTY_NOTICES.md; do
+  [ -s "$OUT/$f" ] || fail "missing or empty $f"
+done
+grep -q "MIT License" "$OUT/LICENSE" || fail "LICENSE is not the MIT license text"
+grep -q "Apache-2.0" "$OUT/THIRD_PARTY_NOTICES.md" || fail "THIRD_PARTY_NOTICES.md lists no Apache-2.0 modules"
+! grep -q "UNKNOWN: no license file" "$OUT/THIRD_PARTY_NOTICES.md" || fail "THIRD_PARTY_NOTICES.md has a module without a license"
 [ "$(du -sk "$OUT" | cut -f1)" -lt 120000 ] || fail "tree is larger than 120 MB"
 node - "$OUT" <<'JS' || fail "manifest check failed"
 const fs = require('fs'), out = process.argv[2]
