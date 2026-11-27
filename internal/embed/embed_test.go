@@ -315,6 +315,27 @@ func TestPendingRefusesFingerprintMismatch(t *testing.T) {
 	}
 }
 
+func TestStoredGemmaIndexRefusesExplicitQwen3(t *testing.T) {
+	ctx := context.Background()
+	_, st := workspace(t)
+	srv := embedtest.New(768, "embeddinggemma", "qwen3-embedding:0.6b")
+	defer srv.Close()
+	a := localEmbedder(t, srv, "embeddinggemma")
+	vs := vector.NewVec1(st.DB())
+	if _, err := Pending(ctx, st, a, vs); err != nil {
+		t.Fatal(err)
+	}
+	b := localEmbedder(t, srv, "qwen3-embedding:0.6b")
+	before := srv.Texts.Load()
+	_, err := Pending(ctx, st, b, vs)
+	if !errors.Is(err, ErrFingerprintMismatch) || !strings.Contains(err.Error(), "index --reembed") {
+		t.Fatalf("Pending with qwen3-embedding = %v, want ErrFingerprintMismatch naming --reembed", err)
+	}
+	if srv.Texts.Load() != before {
+		t.Error("a refused Pending still sent texts")
+	}
+}
+
 func TestDetectsDimensionsOfUnknownModel(t *testing.T) {
 	ctx := context.Background()
 	_, st := workspace(t)
