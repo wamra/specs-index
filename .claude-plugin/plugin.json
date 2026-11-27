@@ -1,0 +1,8 @@
+{
+  "name": "specs-index",
+  "description": "Search, trace and check coverage over a project's Markdown requirement and design documents and Gherkin feature files through the specs-index binary: an MCP server with eight tools, six slash commands and a specs-search skill. Binaries for macOS, Linux and Windows are bundled.",
+  "license": "MIT",
+  "author": {
+    "name": "wamra"
+  }
+}
