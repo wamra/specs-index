@@ -116,6 +116,10 @@ Fields: `provider.embed` (`ollama`, `openai`, `bedrock` or `none`; default `olla
 
 A non-local provider is contacted only when `allow_cloud` is true (or `SPECS_INDEX_ALLOW_CLOUD=true`, or `--allow-cloud` on `index` / `doctor`). Without any embedder, everything except vector and hybrid search works.
 
+### Using Qwen3-Embedding
+
+`embeddinggemma` stays the default. `qwen3-embedding` is also supported: run `ollama pull qwen3-embedding:0.6b`, then set `SPECS_INDEX_EMBED_MODEL=qwen3-embedding:0.6b` (or `"model"` in the config file). The instruction Qwen3-Embedding expects is added to search queries automatically; documents get no prefix. An existing index was embedded with another model, so switching needs `specs-index index --reembed` with the model set explicitly; until then `index` reports a mismatch and vector search refuses. On the maintainer's benchmark of session transcripts (one run, 14,010 chunks, 150 sessions, unpublished) embeddinggemma scored MRR 0.660 and `qwen3-embedding:0.6b` with the instruction 0.604 (4b with the instruction 0.655; without the instruction 0.516 and 0.531). Specification documents were not measured.
+
 ## Environment variables
 
 From `config.EnvVars()`:

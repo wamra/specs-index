@@ -36,6 +36,10 @@ Link kinds: `parent_of`, `implements`, `verified_by`, `depends_on`, `conflicts_w
 
 The default provider is a local Ollama with the `embeddinggemma` model; `openai` (any OpenAI-compatible endpoint) and `bedrock` are the others, and `none` turns embeddings off. Document text is sent to a non-local provider (Bedrock, or an endpoint on another host) only when `allow_cloud` is true or `--allow-cloud` is passed. Without a reachable embedder `index` is text-only and everything except `--mode vector` and `--mode hybrid` works. Settings: `~/.config/specs-index/config.json` (`specs-index config init` writes an example) and the `SPECS_INDEX_*` environment variables, listed in the reference.
 
+### Using Qwen3-Embedding
+
+`embeddinggemma` stays the default. `qwen3-embedding` is also supported: run `ollama pull qwen3-embedding:0.6b`, then set `SPECS_INDEX_EMBED_MODEL=qwen3-embedding:0.6b` (or `"model"` in the config file). The instruction Qwen3-Embedding expects is added to search queries automatically; documents get no prefix. An existing index was embedded with another model, so switching needs `specs-index index --reembed` with the model set explicitly; until then `index` reports a mismatch and vector search refuses. On the maintainer's benchmark of session transcripts (one run, 14,010 chunks, 150 sessions, unpublished) embeddinggemma scored MRR 0.660 and `qwen3-embedding:0.6b` with the instruction 0.604 (4b with the instruction 0.655; without the instruction 0.516 and 0.531). Specification documents were not measured.
+
 ## Privacy and security
 
 - **What is read:** only the `.md` and `.feature` files under the sources you registered with `add`, plus the config file `~/.config/specs-index/config.json` and the `SPECS_INDEX_*` environment variables. Source files are never modified.
