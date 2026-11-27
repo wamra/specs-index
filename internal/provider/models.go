@@ -21,6 +21,11 @@ const (
 	GemmaQueryPrefix = "task: search result | query: "
 )
 
+// Qwen3-Embedding takes an instruction on the query side only; documents get
+// no prefix. The instruction text is the one used for the maintainer's
+// benchmark.
+const QwenQueryPrefix = "Instruct: Given a search query about specification, design and plan documents, retrieve the relevant passages\nQuery:"
+
 // KnownEmbedModel returns the defaults for a model name. Names are matched
 // case-insensitively after dropping an "org/" path and a ":tag".
 func KnownEmbedModel(model string) (ModelDefaults, bool) {
@@ -34,6 +39,10 @@ func KnownEmbedModel(model string) (ModelDefaults, bool) {
 	switch {
 	case strings.HasPrefix(m, "embeddinggemma"):
 		return ModelDefaults{GemmaDocPrefix, GemmaQueryPrefix, 768}, true
+	case strings.HasPrefix(m, "qwen3-embedding"):
+		// 0.6b is 1024, 4b 2560 and 8b 4096 dimensions; the tag is dropped
+		// above, so the size is detected from the first answer.
+		return ModelDefaults{"", QwenQueryPrefix, 0}, true
 	case strings.HasPrefix(m, "nomic-embed-text"), strings.HasPrefix(m, "text-embedding-nomic-embed-text"):
 		return ModelDefaults{"search_document: ", "search_query: ", 768}, true
 	case strings.HasPrefix(m, "all-minilm"):

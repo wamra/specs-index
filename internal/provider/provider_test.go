@@ -241,6 +241,12 @@ func TestKnownModelDefaults(t *testing.T) {
 	}{
 		{"embeddinggemma", "title: none | text: ", "task: search result | query: ", 768},
 		{"embeddinggemma:latest", "title: none | text: ", "task: search result | query: ", 768},
+		{"qwen3-embedding", "", "Instruct: Given a search query about specification, design and plan documents, retrieve the relevant passages\nQuery:", 0},
+		{"qwen3-embedding:0.6b", "", "Instruct: Given a search query about specification, design and plan documents, retrieve the relevant passages\nQuery:", 0},
+		{"qwen3-embedding:4b", "", "Instruct: Given a search query about specification, design and plan documents, retrieve the relevant passages\nQuery:", 0},
+		{"qwen3-embedding:8b", "", "Instruct: Given a search query about specification, design and plan documents, retrieve the relevant passages\nQuery:", 0},
+		{"hf.co/Qwen/Qwen3-Embedding-0.6B-GGUF:Q8_0", "", "Instruct: Given a search query about specification, design and plan documents, retrieve the relevant passages\nQuery:", 0},
+		{"Qwen/qwen3-embedding:8b", "", "Instruct: Given a search query about specification, design and plan documents, retrieve the relevant passages\nQuery:", 0},
 		{"nomic-embed-text", "search_document: ", "search_query: ", 768},
 		{"nomic-embed-text:v1.5", "search_document: ", "search_query: ", 768},
 		{"all-minilm", "", "", 384},
@@ -256,6 +262,20 @@ func TestKnownModelDefaults(t *testing.T) {
 	}
 	if _, ok := KnownEmbedModel("mystery-model"); ok {
 		t.Fatal("unknown model matched")
+	}
+}
+
+func TestExplicitQwen3ResolvesInstructionPrefix(t *testing.T) {
+	r := EmbedConfig{Model: "qwen3-embedding:0.6b"}.Resolved()
+	if r.Provider != Ollama || r.Model != "qwen3-embedding:0.6b" || r.Dims != 0 ||
+		*r.DocPrefix != "" || *r.QueryPrefix != QwenQueryPrefix {
+		t.Fatalf("%+v", r)
+	}
+	// no model set: still embeddinggemma with its prefixes
+	d := EmbedConfig{}.Resolved()
+	if d.Model != "embeddinggemma" || d.Dims != 768 ||
+		*d.DocPrefix != GemmaDocPrefix || *d.QueryPrefix != GemmaQueryPrefix {
+		t.Fatalf("%+v", d)
 	}
 }
 
